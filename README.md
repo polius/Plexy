@@ -51,6 +51,7 @@ docker run -d \
   -v /path/to/your/plex/media:/downloads \
   -e PLEX_URL=http://host.docker.internal:32400 \
   -e PLEX_TOKEN=YOUR_PLEX_TOKEN_HERE \
+  --restart unless-stopped \
   poliuscorp/plexy
 ```
 

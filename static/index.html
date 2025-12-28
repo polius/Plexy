@@ -306,6 +306,25 @@
             box-shadow: var(--shadow-sm);
         }
         
+        .folder-stats {
+            background: var(--gray-50);
+            padding: 10px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--gray-600);
+            border: 1px solid var(--gray-200);
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
         .folder-item {
             padding: 12px 16px;
             margin: 8px 0;
@@ -329,6 +348,35 @@
             font-size: 20px;
             display: flex;
             align-items: center;
+        }
+        
+        .file-item {
+            padding: 10px 16px;
+            margin: 6px 0;
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid var(--gray-200);
+            font-size: 14px;
+        }
+        
+        .file-icon {
+            margin-right: 12px;
+            color: var(--gray-500);
+            font-size: 16px;
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .file-size {
+            color: var(--gray-500);
+            font-size: 13px;
         }
         
         .btn-group {
@@ -999,6 +1047,7 @@
             <div class="section-title">Select Download Folder</div>
             <div class="folder-browser" id="folderBrowser" role="navigation" aria-label="Folder browser">
                 <div class="current-path" id="currentPath" aria-live="polite">/</div>
+                <div class="folder-stats" id="folderStats"></div>
                 <div id="folderList"></div>
             </div>
             <div class="btn-group">
@@ -1615,6 +1664,19 @@
                 currentPath = data.current_path;
                 document.getElementById('currentPath').textContent = currentPath;
                 
+                // Update folder stats
+                const folderStats = document.getElementById('folderStats');
+                folderStats.innerHTML = `
+                    <div class="stat-item">
+                        <span>📁</span>
+                        <span>${data.folder_count || 0} folder${data.folder_count !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>📄</span>
+                        <span>${data.file_count || 0} file${data.file_count !== 1 ? 's' : ''}</span>
+                    </div>
+                `;
+                
                 const folderList = document.getElementById('folderList');
                 folderList.innerHTML = '';
                 
@@ -1652,10 +1714,27 @@
                     folderList.appendChild(item);
                 });
                 
-                if (data.folders.length === 0 && !data.parent_path) {
+                // Add files
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(file => {
+                        const item = document.createElement('div');
+                        item.className = 'file-item';
+                        const fileSize = formatFileSize(file.size);
+                        item.innerHTML = `
+                            <div class="file-info">
+                                <span class="file-icon">📄</span>
+                                <span>${escapeHtml(file.name)}</span>
+                            </div>
+                            <span class="file-size">${fileSize}</span>
+                        `;
+                        folderList.appendChild(item);
+                    });
+                }
+                
+                if (data.folders.length === 0 && (!data.files || data.files.length === 0) && !data.parent_path) {
                     folderList.innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-state-title">No folders found</div>
+                            <div class="empty-state-title">No folders or files found</div>
                             <div class="empty-state-description">This directory is empty</div>
                         </div>
                     `;
@@ -1665,6 +1744,14 @@
             } catch (error) {
                 showAlert('Error loading folders: ' + error.message, 'error');
             }
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
         function selectCurrentFolder() {

@@ -15,7 +15,9 @@ app = FastAPI()
 
 # Global variables for torrent session
 torrent_session = lt.session()
-torrent_session.listen_on(6881, 6891)
+settings = torrent_session.get_settings()
+settings['listen_interfaces'] = '0.0.0.0:6881'
+torrent_session.apply_settings(settings)
 active_downloads: Dict[str, lt.torrent_handle] = {}
 download_info: Dict[str, dict] = {}
 
@@ -198,6 +200,7 @@ async def list_folders(path: str = None):
             raise HTTPException(status_code=404, detail="Path not found")
         
         folders = []
+        files = []
         try:
             entries = os.listdir(internal_path)
             for entry in sorted(entries):
@@ -206,6 +209,13 @@ async def list_folders(path: str = None):
                     folders.append({
                         "name": entry,
                         "path": get_display_path(full_internal_path)
+                    })
+                elif os.path.isfile(full_internal_path):
+                    # Get file size
+                    size = os.path.getsize(full_internal_path)
+                    files.append({
+                        "name": entry,
+                        "size": size
                     })
         except PermissionError:
             raise HTTPException(status_code=403, detail="Permission denied")
@@ -217,7 +227,10 @@ async def list_folders(path: str = None):
             "current_path": path,
             "display_path": path,
             "parent_path": parent_display,
-            "folders": folders
+            "folders": folders,
+            "files": files,
+            "folder_count": len(folders),
+            "file_count": len(files)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
