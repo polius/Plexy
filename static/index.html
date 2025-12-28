@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plexy - Torrent Downloader for Plex</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'><path fill='%23E5A00D' d='M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z'/><path fill='%23FFF' d='M192 352V160l128 96-128 96zm16-144v96l64-48-64-48z'/><g fill='%23282A2D'><path d='M192 352V160l128 96-128 96zm16-144v96l64-48-64-48z'/><path d='M192 352V160l128 96-128 96zm-16-16v-32l32 16-32 16z'/></g></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --primary-light: #e7e9ff;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --radius-sm: 6px;
+            --radius: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        @media (max-width: 640px) {
+            body {
+                padding: 10px;
+            }
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 40px;
+            box-shadow: var(--shadow-xl);
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                padding: 24px;
+                border-radius: var(--radius-lg);
+            }
+        }
+        
+        h1 {
+            color: var(--gray-900);
+            margin-bottom: 8px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 24px;
+                gap: 12px;
+            }
+        }
+        
+        .plex-logo {
+            width: 40px;
+            height: 40px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+        
+        @media (max-width: 640px) {
+            .plex-logo {
+                width: 36px;
+                height: 36px;
+            }
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: var(--gray-600);
+            margin-bottom: 35px;
+            margin-top: 15px;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        
+        @media (max-width: 640px) {
+            .subtitle {
+                font-size: 14px;
+                margin-bottom: 40px;
+            }
+        }
+        
+        .section-title {
+            font-size: 18px;
+            color: var(--gray-900);
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            transition: var(--transition);
+            background: var(--gray-50);
+        }
+        
+        input[type="text"]:hover {
+            border-color: var(--gray-300);
+            background: white;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        
+        input[type="text"]::placeholder {
+            color: var(--gray-400);
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            margin-bottom: 16px;
+            background: var(--gray-50);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        select:hover {
+            border-color: var(--gray-300);
+            background: white;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background: #dc2626;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background: #059669;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+        
+        .folder-browser {
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background: var(--gray-50);
+        }
+        
+        .folder-browser::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .folder-browser::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 4px;
+        }
+        
+        .folder-browser::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 4px;
+        }
+        
+        .folder-browser::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+        
+        .current-path {
+            background: white;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-200);
+            word-break: break-all;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .folder-item {
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: white;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            border: 2px solid transparent;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .folder-item:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+        }
+        
+        .folder-icon {
+            margin-right: 12px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 640px) {
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .btn-group .btn {
+                width: 100%;
+            }
+        }
+        
+        .progress-container {
+            display: none;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-top: 24px;
+            background: var(--gray-50);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 36px;
+            background: var(--gray-200);
+            border-radius: 18px;
+            overflow: hidden;
+            margin: 20px 0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        
+        .progress-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 640px) {
+            .progress-info {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .progress-item {
+            background: white;
+            padding: 16px;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .progress-label {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+        
+        .progress-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+        
+        .plex-section {
+            display: none;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .alert {
+            padding: 16px 20px;
+            border-radius: var(--radius-lg);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.5;
+            box-shadow: var(--shadow-md);
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+            margin-bottom: 0;
+        }
+        
+        .alert-error {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 0 20px;
+            position: relative;
+        }
+        
+        @media (max-width: 640px) {
+            .step-indicator {
+                padding: 0 10px;
+            }
+        }
+        
+        .step-indicator::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20%;
+            right: 20%;
+            height: 3px;
+            background: var(--gray-200);
+            z-index: 0;
+        }
+        
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 0 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .step-number {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--gray-200);
+            color: var(--gray-500);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-bottom: 8px;
+            transition: var(--transition);
+            border: 3px solid white;
+            box-shadow: var(--shadow);
+        }
+        
+        .step.active .step-number {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: var(--shadow-md), 0 0 0 4px var(--primary-light);
+        }
+        
+        .step.completed .step-number {
+            background: var(--success);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .step-label {
+            font-size: 13px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+        
+        .step.active .step-label {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .step.completed .step-label {
+            color: var(--success);
+        }
+        
+        @media (max-width: 640px) {
+            .step-label {
+                font-size: 11px;
+            }
+            
+            .step-number {
+                width: 36px;
+                height: 36px;
+            }
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--gray-200);
+            overflow-x: auto;
+        }
+        
+        .tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        .tabs::-webkit-scrollbar-track {
+            background: var(--gray-100);
+        }
+        
+        .tabs::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 2px;
+        }
+        
+        .tab {
+            padding: 14px 24px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            color: var(--gray-600);
+            border-bottom: 3px solid transparent;
+            transition: var(--transition);
+            white-space: nowrap;
+            position: relative;
+        }
+        
+        .tab:hover {
+            color: var(--primary);
+            background: var(--gray-50);
+        }
+        
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .tab:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: -2px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .file-upload-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .file-upload-box {
+            border: 3px dashed var(--gray-300);
+            border-radius: var(--radius-lg);
+            padding: 40px 20px;
+            text-align: center;
+            background: var(--gray-50);
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .file-upload-box:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        
+        .file-upload-box:active {
+            transform: scale(0.98);
+        }
+        
+        .file-upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.8;
+        }
+        
+        .file-upload-text {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .file-upload-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+        
+        .file-upload-hint {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+        
+        .file-info-display {
+            padding: 20px;
+            background: white;
+            border: 2px solid var(--success);
+            border-radius: var(--radius-lg);
+            color: var(--gray-700);
+            display: none;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .file-info-display.active {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .file-info-display strong {
+            color: var(--success);
+            font-weight: 600;
+        }
+        
+        .btn-fullwidth {
+            width: 100%;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 640px) {
+            .search-box {
+                flex-direction: column;
+            }
+        }
+        
+        .search-filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .search-results {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            background: var(--gray-50);
+        }
+        
+        .search-results::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .search-results::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 4px;
+        }
+        
+        .search-results::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 4px;
+        }
+        
+        .search-results::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+        
+        .result-item {
+            padding: 18px;
+            margin: 12px 0;
+            background: white;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .result-item:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .result-item.selected {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md), 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .result-name {
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 12px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            line-height: 1.5em;
+            max-height: 3em;
+            word-break: break-word;
+        }
+        
+        .result-item:hover .result-name {
+            color: var(--primary);
+        }
+        
+        .result-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--gray-600);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .result-badge {
+            background: var(--primary);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .result-badge.seeders {
+            background: var(--success);
+        }
+        
+        .result-badge.leechers {
+            background: var(--danger);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+        
+        .loading::before {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background: var(--gray-900);
+            color: white;
+            font-size: 12px;
+            border-radius: var(--radius-sm);
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 8px;
+        }
+        
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-500);
+        }
+        
+        .empty-state-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 8px;
+        }
+        
+        .empty-state-description {
+            font-size: 14px;
+            color: var(--gray-500);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" style="text-decoration: none; color: inherit;">
+            <h1>
+                <svg class="plex-logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#E5A00D" d="M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z"/>
+                    <path fill="#FFF" d="M192 352V160l128 96-128 96zm16-144v96l64-48-64-48z"/>
+                    <g fill="#282A2D">
+                        <path d="M192 352V160l128 96-128 96zm16-144v96l64-48-64-48z"/>
+                        <path d="M192 352V160l128 96-128 96zm-16-16v-32l32 16-32 16z"/>
+                    </g>
+                </svg>
+                Plexy
+                <span style="font-size: 14px; font-weight: 500; margin-left: -5px; margin-top: 15px; letter-spacing: 0.02em;">v1.0.0</span>
+            </h1>
+        </a>
+        <p class="subtitle">Automated Torrent Downloader with Plex Integration</p>
+        
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Source</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Destination</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Download</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">Plex</div>
+            </div>
+        </div>
+        
+        <!-- Step 1: Magnet Link -->
+        <div class="section" id="magnet-section">           
+            <div class="tabs" role="tablist" aria-label="Torrent source selection">
+                <button class="tab active" role="tab" aria-selected="true" aria-controls="file-tab" onclick="switchTab('file')">Torrent File</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="manual-tab" onclick="switchTab('manual')">Magnet Link</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="nyaa-tab" onclick="switchTab('nyaa')">Nyaa.si</button>
+            </div>
+            
+            <!-- Torrent File Upload -->
+            <div class="tab-content active" id="file-tab" role="tabpanel">
+                <input type="file" id="torrentFileInput" accept=".torrent" style="display: none;" onchange="handleFileSelect(event)" aria-label="Select torrent file">
+                
+                <div class="file-upload-container">
+                    <div class="file-upload-box" onclick="document.getElementById('torrentFileInput').click()">
+                        <div class="file-upload-icon">📁</div>
+                        <div class="file-upload-text">
+                            <div class="file-upload-title">Choose Torrent File</div>
+                            <div class="file-upload-hint">Click to browse or drag and drop</div>
+                        </div>
+                    </div>
+                    
+                    <div id="fileInfo" class="file-info-display"></div>
+                    
+                    <button class="btn btn-primary btn-fullwidth" id="proceedFromFile" onclick="proceedFromFile()" disabled style="display: none;">
+                        Next: Select Folder →
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Manual Magnet Input -->
+            <div class="tab-content" id="manual-tab" role="tabpanel">
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <input type="text" id="magnetInput" placeholder="magnet:?xt=urn:btih:..." aria-label="Enter magnet link">
+                    <button class="btn btn-primary btn-fullwidth" onclick="proceedToFolderSelection()">
+                        Next: Select Folder →
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Nyaa.si Search -->
+            <div class="tab-content" id="nyaa-tab" role="tabpanel">
+                <div class="search-box">
+                    <input type="text" id="nyaaSearch" placeholder="Search nyaa.si..." aria-label="Search nyaa.si" style="flex: 1;">
+                    <button class="btn btn-primary" onclick="searchNyaa()">
+                        Search
+                    </button>
+                </div>
+                <div id="searchResults" role="region" aria-live="polite"></div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Folder Selection -->
+        <div class="section hidden" id="folder-section">
+            <div class="section-title">Select Download Folder</div>
+            <div class="folder-browser" id="folderBrowser" role="navigation" aria-label="Folder browser">
+                <div class="current-path" id="currentPath" aria-live="polite">/</div>
+                <div id="folderList"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="selectCurrentFolder()">
+                    Download Here
+                </button>
+                <button class="btn btn-danger" onclick="goBack()">
+                    Back
+                </button>
+            </div>
+        </div>
+        
+        <!-- Step 3: Download Progress -->
+        <div class="progress-container" id="progressContainer">
+            <div class="section-title">Download Progress</div>
+            <div id="downloadName" style="font-weight: 600; margin-bottom: 10px; color: var(--gray-700);">Initializing...</div>
+            <div class="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-bar" id="progressBar">0%</div>
+            </div>
+            <div class="progress-info">
+                <div class="progress-item">
+                    <div class="progress-label">Download Speed</div>
+                    <div class="progress-value" id="downloadSpeed">0 KB/s</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">Upload Speed</div>
+                    <div class="progress-value" id="uploadSpeed">0 KB/s</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">Seeds / Peers</div>
+                    <div class="progress-value" id="peers">0 / 0</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">Downloaded</div>
+                    <div class="progress-value" id="downloaded">0 MB</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">Time Elapsed</div>
+                    <div class="progress-value" id="timeElapsed">0s</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">Time Remaining</div>
+                    <div class="progress-value" id="eta">Calculating...</div>
+                </div>
+            </div>
+            <br>
+            <button class="btn btn-danger" onclick="cancelDownload()" id="cancelBtn">
+                Cancel Download
+            </button>
+            <button class="btn btn-success btn-fullwidth" onclick="proceedToPlex()" id="proceedPlexBtn" style="display: none; margin-top: 12px;">
+                Proceed to Plex Refresh →
+            </button>
+        </div>
+        
+        <!-- Step 4: Plex Refresh -->
+        <div class="section plex-section" id="plex-section">
+            <div id="alertContainer" role="alert" aria-live="polite"></div>
+            <div class="section-title">Update Plex Library</div>
+            <select id="plexLibrary" aria-label="Select Plex library" onchange="onLibrarySelected()">
+                <option value="">Loading libraries...</option>
+            </select>
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="refreshPlex()" id="refreshLibraryBtn" disabled>
+                    Refresh Library
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPath = '/';
+        let magnetLink = '';
+        let downloadId = null;
+        let progressInterval = null;
+        let selectedSearchResult = null;
+        let selectedTorrentFile = null;
+        let plexHealthy = false;
+        let plexHealthChecked = false;
+        
+        // Check URL for download ID on page load and restore session
+        function checkAndRestoreSession() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlDownloadId = urlParams.get('download_id');
+            const urlStep = urlParams.get('step');
+            
+            if (urlDownloadId) {
+                // Restore download session
+                downloadId = urlDownloadId;
+                
+                if (urlStep === 'plex') {
+                    // Show Plex section
+                    document.getElementById('magnet-section').classList.add('hidden');
+                    document.getElementById('progressContainer').style.display = 'none';
+                    document.getElementById('plex-section').style.display = 'block';
+                    setStep(4);
+                } else {
+                    // Show download progress
+                    document.getElementById('magnet-section').classList.add('hidden');
+                    document.getElementById('progressContainer').style.display = 'block';
+                    setStep(3);
+                    
+                    // Start polling for progress
+                    progressInterval = setInterval(updateProgress, 1000);
+                    updateProgress(); // Immediate first update
+                }
+            }
+        }
+        
+        // Update URL with download ID and step
+        function updateURLWithDownloadId(id, step = 'download') {
+            const url = new URL(window.location);
+            url.searchParams.set('download_id', id);
+            url.searchParams.set('step', step);
+            window.history.pushState({}, '', url);
+        }
+        
+        // Update URL step only
+        function updateURLStep(step) {
+            const url = new URL(window.location);
+            if (downloadId) {
+                url.searchParams.set('download_id', downloadId);
+                url.searchParams.set('step', step);
+                window.history.pushState({}, '', url);
+            }
+        }
+        
+        // Clear download ID from URL
+        function clearDownloadIdFromURL() {
+            const url = new URL(window.location);
+            url.searchParams.delete('download_id');
+            window.history.pushState({}, '', url);
+        }
+        
+        // Format seconds into human readable time
+        function formatTime(seconds) {
+            if (seconds < 0 || !isFinite(seconds)) return 'Unknown';
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m ${secs}s`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
+        }
+        
+        // Check Plex health and load libraries
+        checkPlexHealth();
+        
+        // Check for existing session
+        checkAndRestoreSession();
+        
+        async function checkPlexHealth() {
+            try {
+                const response = await fetch('/api/plex/health');
+                if (response.ok) {
+                    plexHealthy = true;
+                    plexHealthChecked = true;
+                    // Load libraries if Plex is healthy
+                    await loadPlexLibraries();
+                } else {
+                    throw new Error('Plex health check failed');
+                }
+            } catch (error) {
+                console.error('Plex health check failed:', error);
+                plexHealthy = false;
+                plexHealthChecked = true;
+                
+                // Show prominent error message at the top
+                const container = document.querySelector('.container');
+                const errorBanner = document.createElement('div');
+                errorBanner.style.cssText = `
+                    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                    border: 2px solid #ef4444;
+                    border-radius: 12px;
+                    padding: 24px;
+                    margin-bottom: 32px;
+                    box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1), 0 2px 4px -1px rgba(239, 68, 68, 0.06);
+                `;
+                errorBanner.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; gap: 16px;">
+                        <div style="
+                            flex-shrink: 0;
+                            width: 48px;
+                            height: 48px;
+                            background: #ef4444;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-size: 24px;
+                            font-weight: bold;
+                        ">!</div>
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 12px 0; color: #991b1b; font-size: 18px; font-weight: 700;">
+                                Plex Connection Required
+                            </h3>
+                            <p style="margin: 0 0 12px 0; color: #7f1d1d; font-size: 14px; line-height: 1.6;">
+                                Unable to establish connection with your Plex Media Server. This application requires a valid Plex connection to function.
+                            </p>
+                            <div style="background: rgba(127, 29, 29, 0.1); border-radius: 8px; padding: 12px; margin-top: 16px;">
+                                <p style="margin: 0 0 8px 0; color: #7f1d1d; font-size: 13px; font-weight: 600;">
+                                    Troubleshooting Steps:
+                                </p>
+                                <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; font-size: 13px; line-height: 1.8;">
+                                    <li>Verify <code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; font-family: monospace;">PLEX_URL</code> environment variable is set correctly</li>
+                                    <li>Ensure <code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; font-family: monospace;">PLEX_TOKEN</code> is valid and has not expired</li>
+                                    <li>Check that your Plex Media Server is running and accessible</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertBefore(errorBanner, container.firstChild.nextSibling);
+                
+                // Disable all tabs
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.disabled = true;
+                    tab.style.opacity = '0.5';
+                    tab.style.cursor = 'not-allowed';
+                    tab.style.pointerEvents = 'none';
+                });
+                
+                // Disable all inputs and buttons in magnet section
+                document.getElementById('magnetInput').disabled = true;
+                document.getElementById('magnetInput').style.opacity = '0.5';
+                document.getElementById('nyaaSearch').disabled = true;
+                document.getElementById('nyaaSearch').style.opacity = '0.5';
+                document.getElementById('torrentFileInput').disabled = true;
+                
+                // Disable file upload box
+                const fileUploadBox = document.querySelector('.file-upload-box');
+                if (fileUploadBox) {
+                    fileUploadBox.style.opacity = '0.5';
+                    fileUploadBox.style.cursor = 'not-allowed';
+                    fileUploadBox.style.pointerEvents = 'none';
+                }
+                
+                // Disable all buttons in magnet section
+                document.querySelectorAll('#magnet-section .btn').forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                });
+                
+                // Disable refresh button and show error in select
+                document.getElementById('plexLibrary').innerHTML = 
+                    '<option value="">Plex not available - Check configuration</option>';
+                const refreshButtons = document.querySelectorAll('.plex-section .btn-success');
+                refreshButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                });
+            }
+        }
+        
+        // Add enter key support for search and initial focus
+        document.addEventListener('DOMContentLoaded', function() {
+            const nyaaSearch = document.getElementById('nyaaSearch');
+            if (nyaaSearch) {
+                nyaaSearch.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchNyaa();
+                    }
+                });
+            }
+            
+            // Focus the magnet input on page load (default tab)
+            const magnetInput = document.getElementById('magnetInput');
+            if (magnetInput) {
+                magnetInput.focus();
+            }
+            
+            // Setup drag and drop for file upload
+            const fileUploadBox = document.querySelector('.file-upload-box');
+            const fileInput = document.getElementById('torrentFileInput');
+            
+            if (fileUploadBox && fileInput) {
+                // Prevent default drag behaviors
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    fileUploadBox.addEventListener(eventName, preventDefaults, false);
+                    document.body.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                // Highlight drop area when dragging over it
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    fileUploadBox.addEventListener(eventName, function() {
+                        fileUploadBox.style.borderColor = 'var(--primary)';
+                        fileUploadBox.style.background = 'var(--primary-light)';
+                    }, false);
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    fileUploadBox.addEventListener(eventName, function() {
+                        fileUploadBox.style.borderColor = '';
+                        fileUploadBox.style.background = '';
+                    }, false);
+                });
+                
+                // Handle dropped files
+                fileUploadBox.addEventListener('drop', function(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    
+                    if (files.length > 0) {
+                        // Create a new FileList-like object and assign to input
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(files[0]);
+                        fileInput.files = dataTransfer.files;
+                        
+                        // Trigger the change event
+                        const event = new Event('change', { bubbles: true });
+                        fileInput.dispatchEvent(event);
+                    }
+                }, false);
+            }
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+        
+        function switchTab(tabName) {
+            // Prevent tab switching if Plex is not healthy
+            if (!plexHealthy) {
+                showAlert('Cannot switch tabs: Plex connection is required to use this application.', 'error');
+                return;
+            }
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach((tab, index) => {
+                const isActive = tab.getAttribute('onclick').includes(tabName);
+                tab.classList.toggle('active', isActive);
+                tab.setAttribute('aria-selected', isActive);
+            });
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            const targetTab = document.getElementById(tabName + '-tab');
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
+            
+            // Clear magnet link when switching tabs
+            magnetLink = '';
+            selectedSearchResult = null;
+            selectedTorrentFile = null;
+            
+            // Reset file upload UI
+            const fileInput = document.getElementById('torrentFileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const proceedFromFile = document.getElementById('proceedFromFile');
+            if (fileInput) fileInput.value = '';
+            if (fileInfo) {
+                fileInfo.textContent = '';
+                fileInfo.classList.remove('active');
+            }
+            if (proceedFromFile) {
+                proceedFromFile.disabled = true;
+                proceedFromFile.style.display = 'none';
+            }
+            
+            // Auto-focus the input field for the active tab
+            setTimeout(() => {
+                if (tabName === 'manual') {
+                    document.getElementById('magnetInput').focus();
+                } else if (tabName === 'nyaa') {
+                    document.getElementById('nyaaSearch').focus();
+                }
+            }, 0);
+        }
+        
+        async function searchNyaa() {
+            // Check if Plex is healthy before allowing search
+            if (!plexHealthy) {
+                showAlert('Cannot search: Plex connection is required to use this application.', 'error');
+                return;
+            }
+            
+            const query = document.getElementById('nyaaSearch').value.trim();
+            if (!query) {
+                showAlert('Please enter a search query', 'error');
+                return;
+            }
+            
+            const resultsContainer = document.getElementById('searchResults');
+            const searchButton = event.target;
+            searchButton.disabled = true;
+            searchButton.textContent = 'Searching...';
+            
+            resultsContainer.innerHTML = '<div class="loading">Searching nyaa.si for results...</div>';
+            
+            try {
+                const response = await fetch(
+                    `/api/search/nyaa?query=${encodeURIComponent(query)}`
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.results || data.results.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-title">No results found</div>
+                            <div class="empty-state-description">Try adjusting your search terms</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Sort results by seeders in descending order
+                data.results.sort((a, b) => b.seeders - a.seeders);
+                
+                resultsContainer.innerHTML = '<div class="search-results">' +
+                    data.results.map((result, index) => `
+                        <div class="result-item" onclick="selectSearchResult(${index}, event)" data-magnet="${escapeHtml(result.magnet)}" tabindex="0" role="button">
+                            <div class="result-name">${escapeHtml(result.name)}</div>
+                            <div class="result-meta">
+                                <span>${escapeHtml(result.date)}</span>
+                                <span>${escapeHtml(result.size)}</span>
+                                <span class="result-badge seeders">Seeds: ${escapeHtml(result.seeders)}</span>
+                                <span class="result-badge leechers">Peers: ${escapeHtml(result.leechers)}</span>
+                                <span>${escapeHtml(result.category)}</span>
+                            </div>
+                        </div>
+                    `).join('') +
+                    '</div>';
+                
+                // Store results for selection
+                window.searchResults = data.results;
+                
+                // Add button to proceed after results
+                resultsContainer.innerHTML += '<button class="btn btn-primary btn-fullwidth" id="proceedFromSearch" onclick="proceedFromSearch()" disabled style="margin-top: 20px;">Next: Select Folder →</button>';
+                
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="alert alert-error">Error searching: ${escapeHtml(error.message)}</div>`;
+            } finally {
+                searchButton.disabled = false;
+                searchButton.textContent = 'Search';
+            }
+        }
+        
+        function selectSearchResult(index, evt) {
+            // Prevent default behavior and stop propagation
+            if (evt) {
+                evt.preventDefault();
+                evt.stopPropagation();
+            }
+            
+            // Remove previous selection
+            document.querySelectorAll('.result-item').forEach(item => {
+                item.classList.remove('selected');
+                item.setAttribute('aria-selected', 'false');
+            });
+            
+            // Mark as selected
+            const selectedItem = evt ? evt.currentTarget : document.querySelectorAll('.result-item')[index];
+            selectedItem.classList.add('selected');
+            selectedItem.setAttribute('aria-selected', 'true');
+            selectedSearchResult = window.searchResults[index];
+            magnetLink = selectedSearchResult.magnet;
+            
+            // Enable proceed button
+            const proceedButton = document.getElementById('proceedFromSearch');
+            if (proceedButton) {
+                proceedButton.disabled = false;
+            }
+        }
+        
+        function proceedFromSearch() {
+            if (!magnetLink) {
+                showAlert('Please select a torrent first', 'error');
+                return;
+            }
+            proceedToFolderSelection();
+        }
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+            
+            if (!file.name.endsWith('.torrent')) {
+                showAlert('Please select a valid .torrent file', 'error');
+                event.target.value = '';
+                return;
+            }
+            
+            selectedTorrentFile = file;
+            const fileInfo = document.getElementById('fileInfo');
+            const proceedButton = document.getElementById('proceedFromFile');
+            
+            fileInfo.innerHTML = `<strong>✓ Selected:</strong> ${escapeHtml(file.name)} <span style="color: var(--gray-500);">(${(file.size / 1024).toFixed(2)} KB)</span>`;
+            fileInfo.classList.add('active');
+            proceedButton.disabled = false;
+            proceedButton.style.display = 'block';
+        }
+        
+        function proceedFromFile() {
+            if (!selectedTorrentFile) {
+                showAlert('Please select a torrent file first', 'error');
+                return;
+            }
+            proceedToFolderSelection();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function loadPlexLibraries() {
+            try {
+                const response = await fetch('/api/plex/libraries');
+                const data = await response.json();
+                const select = document.getElementById('plexLibrary');
+                select.innerHTML = '<option value="">Select a library...</option>';
+                data.libraries.forEach(lib => {
+                    const option = document.createElement('option');
+                    option.value = lib.title;
+                    option.textContent = lib.title;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading Plex libraries:', error);
+                document.getElementById('plexLibrary').innerHTML = 
+                    '<option value="">Error loading libraries</option>';
+                // Disable the refresh button since we can't load libraries
+                const refreshButtons = document.querySelectorAll('.plex-section .btn-success');
+                refreshButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                });
+            }
+        }
+        
+        function setStep(stepNumber) {
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`step${i}`);
+                step.classList.remove('active', 'completed');
+                if (i < stepNumber) {
+                    step.classList.add('completed');
+                } else if (i === stepNumber) {
+                    step.classList.add('active');
+                }
+            }
+        }
+        
+        function proceedToFolderSelection() {
+            // Check if Plex is healthy before allowing any downloads
+            if (!plexHealthy) {
+                showAlert('Cannot proceed: Plex connection is required to use this application.', 'error');
+                return;
+            }
+            
+            // Check if we have a torrent file OR magnet link
+            if (!selectedTorrentFile) {
+                // No torrent file, check for magnet link
+                if (!magnetLink) {
+                    const magnetInput = document.getElementById('magnetInput');
+                    if (magnetInput) {
+                        magnetLink = magnetInput.value.trim();
+                    }
+                }
+                
+                if (!magnetLink || !magnetLink.startsWith('magnet:')) {
+                    showAlert('Please enter a valid magnet link or select a search result', 'error');
+                    return;
+                }
+            }
+            
+            document.getElementById('magnet-section').classList.add('hidden');
+            document.getElementById('folder-section').classList.remove('hidden');
+            setStep(2);
+            // Load from configured base path
+            loadFoldersFromBasePath();
+        }
+        
+        async function loadFoldersFromBasePath() {
+            try {
+                const response = await fetch('/api/config/base-path');
+                const data = await response.json();
+                loadFolders(data.base_path || '/');
+            } catch (error) {
+                console.error('Error getting base path:', error);
+                loadFolders('/');
+            }
+        }
+        
+        async function loadFolders(path) {
+            try {
+                const folderBrowser = document.getElementById('folderBrowser');
+                folderBrowser.style.opacity = '0.6';
+                
+                const url = path ? `/api/folders?path=${encodeURIComponent(path)}` : '/api/folders';
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                currentPath = data.current_path;
+                document.getElementById('currentPath').textContent = currentPath;
+                
+                const folderList = document.getElementById('folderList');
+                folderList.innerHTML = '';
+                
+                // Add parent folder option if not at root
+                if (data.parent_path) {
+                    const parentItem = document.createElement('div');
+                    parentItem.className = 'folder-item';
+                    parentItem.innerHTML = '<span class="folder-icon">↑</span><span>.. (Parent folder)</span>';
+                    parentItem.onclick = () => loadFolders(data.parent_path);
+                    parentItem.setAttribute('tabindex', '0');
+                    parentItem.setAttribute('role', 'button');
+                    parentItem.onkeypress = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            loadFolders(data.parent_path);
+                        }
+                    };
+                    folderList.appendChild(parentItem);
+                }
+                
+                // Add folders
+                data.folders.forEach(folder => {
+                    const item = document.createElement('div');
+                    item.className = 'folder-item';
+                    item.innerHTML = `<span class="folder-icon">▶</span><span>${escapeHtml(folder.name)}</span>`;
+                    item.onclick = () => loadFolders(folder.path);
+                    item.setAttribute('tabindex', '0');
+                    item.setAttribute('role', 'button');
+                    item.onkeypress = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            loadFolders(folder.path);
+                        }
+                    };
+                    folderList.appendChild(item);
+                });
+                
+                if (data.folders.length === 0 && !data.parent_path) {
+                    folderList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-title">No folders found</div>
+                            <div class="empty-state-description">This directory is empty</div>
+                        </div>
+                    `;
+                }
+                
+                folderBrowser.style.opacity = '1';
+            } catch (error) {
+                showAlert('Error loading folders: ' + error.message, 'error');
+            }
+        }
+        
+        function selectCurrentFolder() {
+            startDownload(currentPath);
+        }
+        
+        function goBack() {
+            document.getElementById('folder-section').classList.add('hidden');
+            document.getElementById('magnet-section').classList.remove('hidden');
+            setStep(1);
+        }
+        
+        async function startDownload(path) {
+            const downloadButton = event.target;
+            downloadButton.disabled = true;
+            downloadButton.textContent = 'Starting...';
+            
+            try {
+                let response;
+                
+                if (selectedTorrentFile) {
+                    // Upload torrent file
+                    const formData = new FormData();
+                    formData.append('file', selectedTorrentFile);
+                    formData.append('download_path', path);
+                    
+                    response = await fetch('/api/download/file', {
+                        method: 'POST',
+                        body: formData
+                    });
+                } else {
+                    // Use magnet link
+                    response = await fetch('/api/download', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            magnet_link: magnetLink,
+                            download_path: path
+                        })
+                    });
+                }
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                    throw new Error(errorData.detail || 'Failed to start download');
+                }
+                
+                const data = await response.json();
+                downloadId = data.download_id;
+                
+                // Update URL with download ID for session restoration
+                updateURLWithDownloadId(downloadId);
+                
+                document.getElementById('folder-section').classList.add('hidden');
+                document.getElementById('progressContainer').style.display = 'block';
+                setStep(3);
+                
+                // Start polling for progress
+                progressInterval = setInterval(updateProgress, 1000);
+            } catch (error) {
+                showAlert('Error starting download: ' + error.message, 'error');
+                downloadButton.disabled = false;
+                downloadButton.textContent = 'Download Here';
+            }
+        }
+        
+        async function updateProgress() {
+            if (!downloadId) return;
+            
+            try {
+                const response = await fetch(`/api/progress/${downloadId}`);
+                
+                // Handle cancelled or failed downloads
+                if (!response.ok) {
+                    if (response.status === 404 || response.status === 410) {
+                        clearInterval(progressInterval);
+                        console.log('Download no longer exists');
+                        return;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Check for errors
+                if (data.status === 'error') {
+                    clearInterval(progressInterval);
+                    document.getElementById('cancelBtn').disabled = true;
+                    document.getElementById('progressBar').style.background = 'var(--danger)';
+                    document.getElementById('progressBar').textContent = 'Error: ' + (data.error || 'Download failed');
+                    showAlert('Download failed: ' + (data.error || 'Unknown error'), 'error');
+                    setTimeout(() => startOver(), 5000);
+                    return;
+                }
+                
+                // Safely handle progress value
+                const progress = data.progress !== undefined && data.progress !== null ? data.progress : 0;
+                const progressPercent = progress.toFixed(1);
+                
+                document.getElementById('downloadName').textContent = data.name || 'Unknown';
+                document.getElementById('progressBar').style.width = progressPercent + '%';
+                document.getElementById('progressBar').textContent = progressPercent + '%';
+                document.getElementById('progressBar').parentElement.setAttribute('aria-valuenow', progressPercent);
+                document.getElementById('downloadSpeed').textContent = (data.download_rate || 0).toFixed(1) + ' KB/s';
+                document.getElementById('uploadSpeed').textContent = (data.upload_rate || 0).toFixed(1) + ' KB/s';
+                document.getElementById('peers').textContent = (data.num_seeds || 0) + ' / ' + (data.num_peers || 0);
+                
+                // Display downloaded / total size
+                const downloadedMB = (data.total_download || 0).toFixed(1);
+                const totalSizeMB = data.total_size || 0;
+                if (totalSizeMB > 0) {
+                    document.getElementById('downloaded').textContent = `${downloadedMB} / ${totalSizeMB.toFixed(1)} MB`;
+                } else {
+                    document.getElementById('downloaded').textContent = downloadedMB + ' MB';
+                }
+                
+                // Display elapsed time
+                const elapsedSeconds = data.elapsed_seconds || 0;
+                document.getElementById('timeElapsed').textContent = formatTime(elapsedSeconds);
+                
+                // Display ETA
+                if (data.eta_seconds && data.eta_seconds > 0 && progress < 99.9) {
+                    document.getElementById('eta').textContent = formatTime(data.eta_seconds);
+                } else if (progress >= 99.9) {
+                    document.getElementById('eta').textContent = 'Complete';
+                } else {
+                    document.getElementById('eta').textContent = 'Calculating...';
+                }
+                
+                // Check if completed
+                if (data.status === 'completed' || progress >= 99.9) {
+                    clearInterval(progressInterval);
+                    document.getElementById('cancelBtn').style.display = 'none';
+                    document.getElementById('proceedPlexBtn').style.display = 'block';
+                    document.getElementById('progressBar').textContent = 'Complete ✓';
+                    document.getElementById('eta').textContent = 'Complete';
+                }
+            } catch (error) {
+                console.error('Error updating progress:', error);
+                // Don't show error to user for transient network issues
+            }
+        }
+        
+        async function cancelDownload() {
+            if (!downloadId) return;
+            
+            if (!confirm('Are you sure you want to cancel this download?')) {
+                return;
+            }
+            
+            const cancelButton = document.getElementById('cancelBtn');
+            cancelButton.disabled = true;
+            cancelButton.textContent = 'Cancelling...';
+            
+            try {
+                await fetch('/api/cancel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        download_id: downloadId
+                    })
+                });
+                
+                clearInterval(progressInterval);
+                showAlert('Download cancelled successfully', 'success');
+                setTimeout(() => startOver(), 2000);
+            } catch (error) {
+                showAlert('Error cancelling download: ' + error.message, 'error');
+                cancelButton.disabled = false;
+                cancelButton.textContent = 'Cancel Download';
+            }
+        }
+        
+        function showPlexSection() {
+            setStep(4);
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('plex-section').style.display = 'block';
+            updateURLStep('plex');
+        }
+        
+        function proceedToPlex() {
+            showPlexSection();
+        }
+        
+        function onLibrarySelected() {
+            const library = document.getElementById('plexLibrary').value;
+            const refreshBtn = document.getElementById('refreshLibraryBtn');
+            
+            if (library) {
+                refreshBtn.disabled = false;
+            } else {
+                refreshBtn.disabled = true;
+            }
+        }
+        
+        async function refreshPlex() {
+            // Check if Plex is healthy before proceeding
+            if (!plexHealthy) {
+                showAlert('Plex is not available. Please check your Plex configuration.', 'error');
+                return;
+            }
+            
+            const library = document.getElementById('plexLibrary').value;
+            if (!library) {
+                showAlert('Please select a library', 'error');
+                return;
+            }
+            
+            const refreshButton = document.getElementById('refreshLibraryBtn');
+            refreshButton.disabled = true;
+            refreshButton.innerHTML = '<span style="display: inline-block; animation: spin 0.8s linear infinite;">↻</span> Refreshing...';
+            
+            try {
+                const response = await fetch('/api/plex/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        library_name: library
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to refresh Plex library');
+                }
+                
+                const data = await response.json();
+                showAlert(`Scanning "${library}" for new content. Your files will appear in Plex shortly!`, 'success', false);
+                
+                // Mark step 4 as complete
+                document.getElementById('step4').classList.add('completed');
+                
+                // Hide refresh section
+                document.querySelector('.plex-section .section-title').style.display = 'none';
+                document.getElementById('plexLibrary').style.display = 'none';
+                refreshButton.style.display = 'none';
+                
+                // Clear download ID from URL after successful Plex refresh
+                setTimeout(() => {
+                    clearDownloadIdFromURL();
+                }, 2000);
+            } catch (error) {
+                showAlert('Error refreshing Plex library: ' + error.message, 'error');
+                refreshButton.disabled = false;
+                refreshButton.innerHTML = 'Refresh Library';
+            }
+        }
+        
+        function showAlert(message, type, autoDismiss = true) {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${escapeHtml(message)}</div>`;
+            if (autoDismiss) {
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 5000);
+            }
+        }
+        
+        function startOver() {
+            // Simply reload the page to reset everything
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

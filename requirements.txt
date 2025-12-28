@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+plexapi
+requests
+python-multipart
+urllib3
