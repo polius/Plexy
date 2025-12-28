@@ -16,13 +16,13 @@
 <br>
 
 <details>
-<summary>Expand this to see screenshots</summary>
+<summary><b>See screenshots</b></summary>
 
 | Page | Screenshot |
 | --- | --- |
-| 1.1. Source - Torrent | <img src="assets/source-torrent.png" alt="Source - Torrent" /> |
-| 1.2. Source - Magnet Link | <img src="assets/source-magnet.png" alt="Source - Magnet Link" /> |
-| 1.3. Source - Nyaa.si | <img src="assets/source-nyaa.png" alt="Source - Nyaa.si" /> |
+| 1.1. Source (Torrent) | <img src="assets/source-torrent.png" alt="Source - Torrent" /> |
+| 1.2. Source (Magnet) | <img src="assets/source-magnet.png" alt="Source - Magnet Link" /> |
+| 1.3. Source (Nyaa) | <img src="assets/source-nyaa.png" alt="Source - Nyaa.si" /> |
 | 2. Destination | <img src="assets/destination.png" alt="Destination" /> |
 | 3. Download | <img src="assets/download.png" alt="Download" /> |
 | 4. Plex (Select) | <img src="assets/plex-select.png" alt="Plex - Select" /> |
