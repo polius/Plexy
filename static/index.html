@@ -255,6 +255,11 @@
             box-shadow: var(--shadow-lg);
         }
         
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+        
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -953,6 +958,102 @@
             font-size: 14px;
             color: var(--gray-500);
         }
+        
+        /* File selection styles */
+        .file-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            background: var(--gray-50);
+        }
+        
+        .file-list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--gray-200);
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        
+        .file-list-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-list-item:hover {
+            background: white;
+        }
+        
+        .file-list-item input[type="checkbox"] {
+            margin-right: 12px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        
+        .file-list-item-info {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+        
+        .file-list-item-name {
+            font-size: 14px;
+            color: var(--gray-700);
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .file-list-item-size {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-left: 12px;
+            white-space: nowrap;
+        }
+        
+        .file-selection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: var(--gray-100);
+            border-radius: var(--radius);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .file-selection-stats {
+            font-size: 14px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+        
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            gap: 10px;
+        }
+        
+        .checkbox-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-option label {
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+            color: var(--gray-700);
+        }
     </style>
 </head>
 <body>
@@ -1042,6 +1143,33 @@
             </div>
         </div>
         
+        <!-- Step 1.5: File Selection (for multi-file torrents) -->
+        <div class="section hidden" id="file-selection-section">
+            <div class="section-title">Select Files to Download</div>
+            <div id="torrentInfoDisplay" style="margin-bottom: 16px;"></div>
+            
+            <div class="file-selection-header">
+                <div class="file-selection-stats">
+                    <span id="selectedFileCount">0</span> of <span id="totalFileCount">0</span> files selected
+                    (<span id="selectedFileSize">0 B</span> of <span id="totalFileSize">0 B</span>)
+                </div>
+                <button class="btn btn-sm" onclick="toggleAllFiles()" id="toggleAllBtn">Select All</button>
+            </div>
+            
+            <div class="file-list-container" id="fileListContainer">
+                <!-- Files will be populated here -->
+            </div>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="proceedToFolderSelection()" id="proceedFromFileSelection">
+                    Next: Select Folder →
+                </button>
+                <button class="btn btn-danger" onclick="goBackToSource()">
+                    Back
+                </button>
+            </div>
+        </div>
+        
         <!-- Step 2: Folder Selection -->
         <div class="section hidden" id="folder-section">
             <div class="section-title">Select Download Folder</div>
@@ -1064,6 +1192,7 @@
         <div class="progress-container" id="progressContainer">
             <div class="section-title">Download Progress</div>
             <div id="downloadName" style="font-weight: 600; margin-bottom: 10px; color: var(--gray-700);">Initializing...</div>
+            
             <div class="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                 <div class="progress-bar" id="progressBar">0%</div>
             </div>
@@ -1093,7 +1222,18 @@
                     <div class="progress-value" id="eta">Calculating...</div>
                 </div>
             </div>
-            <br>
+            
+            <!-- File list being downloaded -->
+            <div id="downloadingFilesList" style="display: none; margin-top: 20px; margin-bottom: 20px;">
+                <div style="background: white; border: 2px solid var(--gray-200); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm);">
+                    <div style="font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; gap: 8px;">
+                        <span>📦</span>
+                        <span>Files in this download</span>
+                    </div>
+                    <div id="downloadingFilesContent" style="max-height: 200px; overflow-y: auto; font-size: 13px;"></div>
+                </div>
+            </div>
+            
             <button class="btn btn-danger" onclick="cancelDownload()" id="cancelBtn">
                 Cancel Download
             </button>
@@ -1126,6 +1266,12 @@
         let selectedTorrentFile = null;
         let plexHealthy = false;
         let plexHealthChecked = false;
+        
+        // File selection variables
+        let torrentFiles = [];
+        let selectedFileIndices = [];
+        let allFilesSelected = true;
+        let downloadingFiles = []; // Store files being downloaded
         
         // Check URL for download ID on page load and restore session
         function checkAndRestoreSession() {
@@ -1564,7 +1710,200 @@
                 showAlert('Please select a torrent file first', 'error');
                 return;
             }
-            proceedToFolderSelection();
+            // Check if torrent has multiple files
+            checkTorrentFiles();
+        }
+        
+        async function checkTorrentFiles() {
+            try {
+                let response;
+                
+                if (selectedTorrentFile) {
+                    // Get file info from torrent file
+                    const formData = new FormData();
+                    formData.append('file', selectedTorrentFile);
+                    
+                    response = await fetch('/api/torrent/info/file', {
+                        method: 'POST',
+                        body: formData
+                    });
+                } else if (magnetLink) {
+                    // Get file info from magnet link
+                    response = await fetch('/api/torrent/info', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            magnet_link: magnetLink
+                        })
+                    });
+                }
+                
+                if (!response.ok) {
+                    // If we can't get file info, proceed directly to folder selection
+                    proceedDirectlyToFolderSelection();
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.num_files > 1) {
+                    // Show file selection screen
+                    showFileSelection(data);
+                } else {
+                    // Single file, proceed directly to folder selection
+                    proceedDirectlyToFolderSelection();
+                }
+            } catch (error) {
+                console.error('Error getting torrent info:', error);
+                // On error, proceed directly to folder selection
+                proceedDirectlyToFolderSelection();
+            }
+        }
+        
+        function showFileSelection(torrentData) {
+            torrentFiles = torrentData.files;
+            selectedFileIndices = torrentData.files.map((f, idx) => idx); // Select all by default
+            allFilesSelected = true;
+            
+            // Update UI
+            document.getElementById('torrentInfoDisplay').innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 4px; word-break: break-word;">${escapeHtml(torrentData.name)}</div>
+                <div style="font-size: 14px; color: var(--gray-500);">
+                    ${torrentData.num_files} files • Total: ${formatFileSize(torrentData.total_size)}
+                </div>
+            `;
+            
+            document.getElementById('totalFileCount').textContent = torrentData.num_files;
+            
+            // Render file list
+            renderFileList();
+            updateFileSelectionStats();
+            
+            // Hide magnet section, show file selection
+            document.getElementById('magnet-section').classList.add('hidden');
+            document.getElementById('file-selection-section').classList.remove('hidden');
+            setStep(1); // Still step 1, just a substep
+        }
+        
+        function renderFileList() {
+            const container = document.getElementById('fileListContainer');
+            container.innerHTML = '';
+            
+            torrentFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-list-item';
+                item.onclick = () => toggleFileSelection(index);
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = selectedFileIndices.includes(index);
+                checkbox.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleFileSelection(index);
+                };
+                
+                const info = document.createElement('div');
+                info.className = 'file-list-item-info';
+                
+                const fileName = document.createElement('span');
+                fileName.className = 'file-list-item-name';
+                fileName.textContent = file.name;
+                
+                const fileSize = document.createElement('span');
+                fileSize.className = 'file-list-item-size';
+                fileSize.textContent = formatFileSize(file.size);
+                
+                info.appendChild(fileName);
+                info.appendChild(fileSize);
+                
+                item.appendChild(checkbox);
+                item.appendChild(info);
+                container.appendChild(item);
+            });
+        }
+        
+        function toggleFileSelection(index) {
+            if (selectedFileIndices.includes(index)) {
+                selectedFileIndices = selectedFileIndices.filter(i => i !== index);
+            } else {
+                selectedFileIndices.push(index);
+            }
+            
+            renderFileList();
+            updateFileSelectionStats();
+        }
+        
+        function updateFileSelectionStats() {
+            const selectedCount = selectedFileIndices.length;
+            const totalCount = torrentFiles.length;
+            
+            document.getElementById('selectedFileCount').textContent = selectedCount;
+            
+            const selectedSize = torrentFiles
+                .filter((f, idx) => selectedFileIndices.includes(idx))
+                .reduce((sum, f) => sum + f.size, 0);
+            
+            const totalSize = torrentFiles.reduce((sum, f) => sum + f.size, 0);
+            
+            document.getElementById('selectedFileSize').textContent = formatFileSize(selectedSize);
+            document.getElementById('totalFileSize').textContent = formatFileSize(totalSize);
+            
+            // Update toggle all button
+            const toggleBtn = document.getElementById('toggleAllBtn');
+            allFilesSelected = selectedCount === totalCount;
+            toggleBtn.textContent = allFilesSelected ? 'Deselect All' : 'Select All';
+            
+            // Disable proceed button if no files selected
+            const proceedBtn = document.getElementById('proceedFromFileSelection');
+            proceedBtn.disabled = selectedCount === 0;
+        }
+        
+        function toggleAllFiles() {
+            if (allFilesSelected) {
+                selectedFileIndices = [];
+            } else {
+                selectedFileIndices = torrentFiles.map((f, idx) => idx);
+            }
+            
+            allFilesSelected = !allFilesSelected;
+            renderFileList();
+            updateFileSelectionStats();
+        }
+        
+        function goBackToSource() {
+            document.getElementById('file-selection-section').classList.add('hidden');
+            document.getElementById('magnet-section').classList.remove('hidden');
+            setStep(1);
+        }
+        
+        function proceedDirectlyToFolderSelection() {
+            selectedFileIndices = []; // Empty means download all files
+            document.getElementById('magnet-section').classList.add('hidden');
+            document.getElementById('folder-section').classList.remove('hidden');
+            setStep(2);
+            loadFoldersFromBasePath();
+        }
+        
+        function displayDownloadingFiles() {
+            const filesList = document.getElementById('downloadingFilesList');
+            const filesContent = document.getElementById('downloadingFilesContent');
+            
+            if (downloadingFiles.length > 0) {
+                filesList.style.display = 'block';
+                filesContent.innerHTML = downloadingFiles.map((file, index) => 
+                    `<div style="padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--gray-50); border-radius: var(--radius); margin-bottom: 8px; transition: background 0.2s;" onmouseover="this.style.background='var(--gray-100)'" onmouseout="this.style.background='var(--gray-50)'">
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                            <span style="color: var(--gray-400); font-size: 12px; font-weight: 600; min-width: 24px;">#${index + 1}</span>
+                            <span style="word-break: break-word; color: var(--gray-700); flex: 1;">${escapeHtml(file.name)}</span>
+                        </div>
+                        <span style="white-space: nowrap; color: var(--gray-500); font-weight: 500; font-size: 12px; background: white; padding: 4px 10px; border-radius: var(--radius-sm);">${formatFileSize(file.size)}</span>
+                    </div>`
+                ).join('');
+            } else {
+                filesList.style.display = 'none';
+            }
         }
         
         function escapeHtml(text) {
@@ -1618,23 +1957,40 @@
                 return;
             }
             
-            // Check if we have a torrent file OR magnet link
-            if (!selectedTorrentFile) {
-                // No torrent file, check for magnet link
-                if (!magnetLink) {
-                    const magnetInput = document.getElementById('magnetInput');
-                    if (magnetInput) {
-                        magnetLink = magnetInput.value.trim();
+            // If on file selection screen, check if any files are selected
+            const fileSelectionSection = document.getElementById('file-selection-section');
+            if (!fileSelectionSection.classList.contains('hidden')) {
+                if (selectedFileIndices.length === 0) {
+                    showAlert('Please select at least one file to download', 'error');
+                    return;
+                }
+                fileSelectionSection.classList.add('hidden');
+            } else {
+                // Check if we have a torrent file OR magnet link
+                if (!selectedTorrentFile) {
+                    // No torrent file, check for magnet link
+                    if (!magnetLink) {
+                        const magnetInput = document.getElementById('magnetInput');
+                        if (magnetInput) {
+                            magnetLink = magnetInput.value.trim();
+                        }
+                    }
+                    
+                    if (!magnetLink || !magnetLink.startsWith('magnet:')) {
+                        showAlert('Please enter a valid magnet link or select a search result', 'error');
+                        return;
                     }
                 }
                 
-                if (!magnetLink || !magnetLink.startsWith('magnet:')) {
-                    showAlert('Please enter a valid magnet link or select a search result', 'error');
+                // For manual magnet, check if it has multiple files
+                if (magnetLink && !selectedTorrentFile) {
+                    checkTorrentFiles();
                     return;
                 }
+                
+                document.getElementById('magnet-section').classList.add('hidden');
             }
             
-            document.getElementById('magnet-section').classList.add('hidden');
             document.getElementById('folder-section').classList.remove('hidden');
             setStep(2);
             // Load from configured base path
@@ -1759,15 +2115,32 @@
         }
         
         function goBack() {
-            document.getElementById('folder-section').classList.add('hidden');
-            document.getElementById('magnet-section').classList.remove('hidden');
-            setStep(1);
+            // Check if file selection screen is visible
+            const fileSelectionSection = document.getElementById('file-selection-section');
+            if (!fileSelectionSection.classList.contains('hidden')) {
+                // Go back to file selection
+                document.getElementById('folder-section').classList.add('hidden');
+                fileSelectionSection.classList.remove('hidden');
+                setStep(1);
+            } else {
+                // Go back to source selection
+                document.getElementById('folder-section').classList.add('hidden');
+                document.getElementById('magnet-section').classList.remove('hidden');
+                setStep(1);
+            }
         }
         
         async function startDownload(path) {
             const downloadButton = event.target;
             downloadButton.disabled = true;
             downloadButton.textContent = 'Starting...';
+            
+            // Store the files being downloaded
+            if (torrentFiles.length > 0 && selectedFileIndices.length > 0) {
+                downloadingFiles = selectedFileIndices.map(idx => torrentFiles[idx]);
+            } else {
+                downloadingFiles = [];
+            }
             
             try {
                 let response;
@@ -1777,6 +2150,12 @@
                     const formData = new FormData();
                     formData.append('file', selectedTorrentFile);
                     formData.append('download_path', path);
+                    formData.append('skip_parent_folder', 'true');
+                    
+                    // Add selected files if any
+                    if (selectedFileIndices.length > 0) {
+                        formData.append('selected_files', JSON.stringify(selectedFileIndices));
+                    }
                     
                     response = await fetch('/api/download/file', {
                         method: 'POST',
@@ -1784,15 +2163,23 @@
                     });
                 } else {
                     // Use magnet link
+                    const requestBody = {
+                        magnet_link: magnetLink,
+                        download_path: path,
+                        skip_parent_folder: true
+                    };
+                    
+                    // Add file selection if any specific files were selected
+                    if (selectedFileIndices.length > 0) {
+                        requestBody.selected_files = selectedFileIndices;
+                    }
+                    
                     response = await fetch('/api/download', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            magnet_link: magnetLink,
-                            download_path: path
-                        })
+                        body: JSON.stringify(requestBody)
                     });
                 }
                 
@@ -1810,6 +2197,9 @@
                 document.getElementById('folder-section').classList.add('hidden');
                 document.getElementById('progressContainer').style.display = 'block';
                 setStep(3);
+                
+                // Display files being downloaded
+                displayDownloadingFiles();
                 
                 // Start polling for progress
                 progressInterval = setInterval(updateProgress, 1000);
@@ -1864,6 +2254,7 @@
                 // Display downloaded / total size
                 const downloadedMB = (data.total_download || 0).toFixed(1);
                 const totalSizeMB = data.total_size || 0;
+                
                 if (totalSizeMB > 0) {
                     document.getElementById('downloaded').textContent = `${downloadedMB} / ${totalSizeMB.toFixed(1)} MB`;
                 } else {
@@ -2016,6 +2407,10 @@
         }
         
         function startOver() {
+            // Reset file selection variables
+            torrentFiles = [];
+            selectedFileIndices = [];
+            downloadingFiles = [];
             // Simply reload the page to reset everything
             window.location.href = '/';
         }

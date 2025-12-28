@@ -56,6 +56,8 @@ def get_internal_path(display_path: str) -> str:
 class MagnetRequest(BaseModel):
     magnet_link: str
     download_path: str
+    selected_files: list = None  # List of file indices to download
+    skip_parent_folder: bool = False  # Skip creating parent folder
 
 
 class CancelRequest(BaseModel):
@@ -64,6 +66,10 @@ class CancelRequest(BaseModel):
 
 class PlexRefreshRequest(BaseModel):
     library_name: str
+
+
+class TorrentInfoRequest(BaseModel):
+    magnet_link: str = None
 
 
 @app.get("/")
@@ -168,6 +174,118 @@ async def search_nyaa(query: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/torrent/info")
+async def get_torrent_info(request: TorrentInfoRequest):
+    """Get file list from a magnet link by downloading metadata"""
+    try:
+        if not request.magnet_link or not request.magnet_link.startswith('magnet:'):
+            raise HTTPException(status_code=400, detail="Invalid magnet link format")
+        
+        # Create a temporary session to fetch metadata
+        temp_session = lt.session()
+        temp_settings = temp_session.get_settings()
+        temp_settings['listen_interfaces'] = '0.0.0.0:0'  # Random port
+        temp_session.apply_settings(temp_settings)
+        
+        # Add magnet with minimal settings just to get metadata
+        params = {
+            'save_path': '/tmp',
+            'storage_mode': lt.storage_mode_t.storage_mode_allocate,
+            'flags': lt.torrent_flags.upload_mode,  # Don't download, just get metadata
+        }
+        
+        handle = lt.add_magnet_uri(temp_session, request.magnet_link, params)
+        
+        # Wait for metadata (max 30 seconds)
+        import time
+        max_wait = 30
+        start_time = time.time()
+        
+        while not handle.has_metadata():
+            if time.time() - start_time > max_wait:
+                temp_session.remove_torrent(handle)
+                raise HTTPException(status_code=408, detail="Timeout waiting for torrent metadata")
+            time.sleep(0.1)
+        
+        # Get torrent info
+        torrent_info = handle.torrent_file()
+        if not torrent_info:
+            temp_session.remove_torrent(handle)
+            raise HTTPException(status_code=400, detail="Could not retrieve torrent information")
+        
+        # Extract file information
+        files = []
+        for i in range(torrent_info.num_files()):
+            file_entry = torrent_info.files().at(i)
+            files.append({
+                'index': i,
+                'name': file_entry.path,
+                'size': file_entry.size
+            })
+        
+        torrent_name = torrent_info.name()
+        total_size = torrent_info.total_size()
+        
+        # Clean up
+        temp_session.remove_torrent(handle)
+        
+        return {
+            'name': torrent_name,
+            'total_size': total_size,
+            'num_files': len(files),
+            'files': files
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting torrent info: {str(e)}")
+
+
+@app.post("/api/torrent/info/file")
+async def get_torrent_info_from_file(file: UploadFile = File(...)):
+    """Get file list from an uploaded .torrent file"""
+    try:
+        # Validate file extension
+        if not file.filename.endswith('.torrent'):
+            raise HTTPException(status_code=400, detail="Invalid file type. Please upload a .torrent file")
+        
+        # Read the file content
+        torrent_data = await file.read()
+        
+        if not torrent_data:
+            raise HTTPException(status_code=400, detail="Torrent file is empty")
+        
+        # Create torrent info from the file data
+        try:
+            torrent_info = lt.torrent_info(torrent_data)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid torrent file: {str(e)}")
+        
+        # Extract file information
+        files = []
+        for i in range(torrent_info.num_files()):
+            file_entry = torrent_info.files().at(i)
+            files.append({
+                'index': i,
+                'name': file_entry.path,
+                'size': file_entry.size
+            })
+        
+        torrent_name = torrent_info.name()
+        total_size = torrent_info.total_size()
+        
+        return {
+            'name': torrent_name,
+            'total_size': total_size,
+            'num_files': len(files),
+            'files': files
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting torrent info: {str(e)}")
+
+
 @app.get("/api/config/base-path")
 async def get_base_path():
     """Get the default download base path from config"""
@@ -266,6 +384,44 @@ async def start_download(request: MagnetRequest):
         if not handle.is_valid():
             raise HTTPException(status_code=400, detail="Failed to add magnet link - invalid torrent")
         
+        # Wait for metadata if we need to select files
+        if request.selected_files is not None or request.skip_parent_folder:
+            import time
+            max_wait = 30
+            start_time = time.time()
+            
+            while not handle.has_metadata():
+                if time.time() - start_time > max_wait:
+                    torrent_session.remove_torrent(handle)
+                    raise HTTPException(status_code=408, detail="Timeout waiting for torrent metadata")
+                time.sleep(0.1)
+        
+        # Handle file selection
+        if request.selected_files is not None and handle.has_metadata():
+            torrent_info = handle.torrent_file()
+            if torrent_info:
+                num_files = torrent_info.num_files()
+                # Set file priorities: 0 = don't download, 4 = normal priority
+                for i in range(num_files):
+                    if i in request.selected_files:
+                        handle.file_priority(i, 4)
+                    else:
+                        handle.file_priority(i, 0)
+        
+        # Handle skip parent folder option
+        if request.skip_parent_folder and handle.has_metadata():
+            # This is done by renaming files to remove the first directory component
+            torrent_info = handle.torrent_file()
+            if torrent_info:
+                for i in range(torrent_info.num_files()):
+                    file_entry = torrent_info.files().at(i)
+                    original_path = file_entry.path
+                    # Remove the first directory from the path
+                    path_parts = original_path.split('/', 1)
+                    if len(path_parts) > 1:
+                        new_path = path_parts[1]
+                        handle.rename_file(i, new_path)
+        
         # Generate download ID
         download_id = str(hash(request.magnet_link))[:16]
         active_downloads[download_id] = handle
@@ -290,7 +446,12 @@ async def start_download(request: MagnetRequest):
 
 
 @app.post("/api/download/file")
-async def start_download_from_file(file: UploadFile = File(...), download_path: str = Form(...)):
+async def start_download_from_file(
+    file: UploadFile = File(...), 
+    download_path: str = Form(...),
+    selected_files: str = Form(None),
+    skip_parent_folder: bool = Form(False)
+):
     """Start downloading a torrent from an uploaded .torrent file"""
     try:
         # Validate file extension
@@ -331,6 +492,36 @@ async def start_download_from_file(file: UploadFile = File(...), download_path: 
         # Verify handle is valid
         if not handle.is_valid():
             raise HTTPException(status_code=400, detail="Failed to add torrent - invalid torrent")
+        
+        # Parse selected_files from JSON string
+        selected_files_list = None
+        if selected_files:
+            import json
+            try:
+                selected_files_list = json.loads(selected_files)
+            except:
+                pass
+        
+        # Handle file selection
+        if selected_files_list is not None:
+            num_files = torrent_info.num_files()
+            # Set file priorities: 0 = don't download, 4 = normal priority
+            for i in range(num_files):
+                if i in selected_files_list:
+                    handle.file_priority(i, 4)
+                else:
+                    handle.file_priority(i, 0)
+        
+        # Handle skip parent folder option
+        if skip_parent_folder:
+            for i in range(torrent_info.num_files()):
+                file_entry = torrent_info.files().at(i)
+                original_path = file_entry.path
+                # Remove the first directory from the path
+                path_parts = original_path.split('/', 1)
+                if len(path_parts) > 1:
+                    new_path = path_parts[1]
+                    handle.rename_file(i, new_path)
         
         # Generate download ID from torrent info hash
         download_id = str(torrent_info.info_hash())[:16]
@@ -392,12 +583,22 @@ async def get_progress(download_id: str):
         del active_downloads[download_id]
         return download_info[download_id]
     
-    # Get total size from torrent info
+    # Get total size from torrent info (only for files with priority > 0)
     total_size = 0
     try:
         torrent_info = handle.torrent_file()
         if torrent_info:
-            total_size = torrent_info.total_size() / (1024 * 1024)  # MB
+            num_files = torrent_info.num_files()
+            # Calculate size only for files that are being downloaded
+            for i in range(num_files):
+                if handle.file_priority(i) > 0:
+                    file_entry = torrent_info.files().at(i)
+                    total_size += file_entry.size
+            total_size = total_size / (1024 * 1024)  # Convert to MB
+            
+            # If no files have priority set (all selected), use total size
+            if total_size == 0:
+                total_size = torrent_info.total_size() / (1024 * 1024)
     except:
         pass
     
