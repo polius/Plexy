@@ -270,6 +270,15 @@
             outline-offset: 2px;
         }
         
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
         .folder-browser {
             border: 2px solid var(--gray-200);
             border-radius: var(--radius-lg);
@@ -966,6 +975,16 @@
             border: 1px solid var(--gray-200);
             border-radius: var(--radius);
             background: var(--gray-50);
+            position: relative;
+        }
+        
+        .file-list-viewport {
+            position: relative;
+            width: 100%;
+        }
+        
+        .file-list-spacer {
+            width: 100%;
         }
         
         .file-list-item {
@@ -975,6 +994,7 @@
             border-bottom: 1px solid var(--gray-200);
             transition: background 0.2s;
             cursor: pointer;
+            background: var(--gray-50);
         }
         
         .file-list-item:last-child {
@@ -1097,7 +1117,7 @@
             <div class="tabs" role="tablist" aria-label="Torrent source selection">
                 <button class="tab active" role="tab" aria-selected="true" aria-controls="file-tab" onclick="switchTab('file')">Torrent File</button>
                 <button class="tab" role="tab" aria-selected="false" aria-controls="manual-tab" onclick="switchTab('manual')">Magnet Link</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="nyaa-tab" onclick="switchTab('nyaa')">Nyaa.si</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="nyaa-tab" onclick="switchTab('nyaa')">Nyaa</button>
             </div>
             
             <!-- Torrent File Upload -->
@@ -1124,8 +1144,8 @@
             <!-- Manual Magnet Input -->
             <div class="tab-content" id="manual-tab" role="tabpanel">
                 <div style="display: flex; flex-direction: column; gap: 20px;">
-                    <input type="text" id="magnetInput" placeholder="magnet:?xt=urn:btih:..." aria-label="Enter magnet link">
-                    <button class="btn btn-primary btn-fullwidth" onclick="proceedToFolderSelection()">
+                    <input type="text" id="magnetInput" placeholder="magnet:?xt=urn:btih:..." aria-label="Enter magnet link" oninput="torrentFiles = []; selectedFileIndices = [];">
+                    <button class="btn btn-primary btn-fullwidth" onclick="proceedToFolderSelection(this)">
                         Next: Select Folder →
                     </button>
                 </div>
@@ -1157,11 +1177,11 @@
             </div>
             
             <div class="file-list-container" id="fileListContainer">
-                <!-- Files will be populated here -->
+                <div class="file-list-viewport" id="fileListViewport"></div>
             </div>
             
             <div class="btn-group" style="margin-top: 20px;">
-                <button class="btn btn-primary" onclick="proceedToFolderSelection()" id="proceedFromFileSelection">
+                <button class="btn btn-primary" onclick="proceedToFolderSelection(this)" id="proceedFromFileSelection">
                     Next: Select Folder →
                 </button>
                 <button class="btn btn-danger" onclick="goBackToSource()">
@@ -1668,6 +1688,10 @@
             selectedSearchResult = window.searchResults[index];
             magnetLink = selectedSearchResult.magnet;
             
+            // Clear previous torrent data to force fresh fetch
+            torrentFiles = [];
+            selectedFileIndices = [];
+            
             // Enable proceed button
             const proceedButton = document.getElementById('proceedFromSearch');
             if (proceedButton) {
@@ -1680,7 +1704,8 @@
                 showAlert('Please select a torrent first', 'error');
                 return;
             }
-            proceedToFolderSelection();
+            const btn = document.getElementById('proceedFromSearch');
+            proceedToFolderSelection(btn);
         }
         
         function handleFileSelect(event) {
@@ -1694,6 +1719,10 @@
                 event.target.value = '';
                 return;
             }
+            
+            // Clear previous torrent data
+            torrentFiles = [];
+            selectedFileIndices = [];
             
             selectedTorrentFile = file;
             const fileInfo = document.getElementById('fileInfo');
@@ -1714,7 +1743,7 @@
             checkTorrentFiles();
         }
         
-        async function checkTorrentFiles() {
+        async function checkTorrentFiles(loadingButton = null) {
             try {
                 let response;
                 
@@ -1742,21 +1771,25 @@
                 
                 if (!response.ok) {
                     // If we can't get file info, proceed directly to folder selection
+                    if (loadingButton) restoreButton(loadingButton);
                     proceedDirectlyToFolderSelection();
                     return;
                 }
                 
                 const data = await response.json();
                 
+                if (loadingButton) restoreButton(loadingButton);
+                
                 if (data.num_files > 1) {
                     // Show file selection screen
                     showFileSelection(data);
                 } else {
                     // Single file, proceed directly to folder selection
-                    proceedDirectlyToFolderSelection();
+                    proceedDirectlyToFolderSelection(data);
                 }
             } catch (error) {
                 console.error('Error getting torrent info:', error);
+                if (loadingButton) restoreButton(loadingButton);
                 // On error, proceed directly to folder selection
                 proceedDirectlyToFolderSelection();
             }
@@ -1789,39 +1822,87 @@
         
         function renderFileList() {
             const container = document.getElementById('fileListContainer');
-            container.innerHTML = '';
+            const viewport = document.getElementById('fileListViewport');
             
-            torrentFiles.forEach((file, index) => {
-                const item = document.createElement('div');
-                item.className = 'file-list-item';
-                item.onclick = () => toggleFileSelection(index);
+            // Virtual scrolling implementation for large file lists
+            const ITEM_HEIGHT = 49; // Height of each file item in pixels
+            const BUFFER_SIZE = 10; // Number of items to render outside viewport
+            
+            let scrollTop = 0;
+            const totalHeight = torrentFiles.length * ITEM_HEIGHT;
+            
+            // Create spacer to maintain scroll height
+            viewport.innerHTML = '';
+            const spacer = document.createElement('div');
+            spacer.className = 'file-list-spacer';
+            spacer.style.height = totalHeight + 'px';
+            viewport.appendChild(spacer);
+            
+            function renderVisibleItems() {
+                // Calculate visible range
+                const containerHeight = container.clientHeight;
+                const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_SIZE);
+                const endIndex = Math.min(
+                    torrentFiles.length,
+                    Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER_SIZE
+                );
                 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.checked = selectedFileIndices.includes(index);
-                checkbox.onclick = (e) => {
-                    e.stopPropagation();
-                    toggleFileSelection(index);
-                };
+                // Remove existing file items (but keep spacer)
+                const existingItems = viewport.querySelectorAll('.file-list-item');
+                existingItems.forEach(item => item.remove());
                 
-                const info = document.createElement('div');
-                info.className = 'file-list-item-info';
+                // Render visible items
+                for (let index = startIndex; index < endIndex; index++) {
+                    const file = torrentFiles[index];
+                    const item = document.createElement('div');
+                    item.className = 'file-list-item';
+                    item.style.position = 'absolute';
+                    item.style.top = (index * ITEM_HEIGHT) + 'px';
+                    item.style.left = '0';
+                    item.style.right = '0';
+                    item.style.height = ITEM_HEIGHT + 'px';
+                    item.onclick = () => toggleFileSelection(index);
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = selectedFileIndices.includes(index);
+                    checkbox.dataset.fileIndex = index;
+                    checkbox.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleFileSelection(index);
+                    };
+                    
+                    const info = document.createElement('div');
+                    info.className = 'file-list-item-info';
+                    
+                    const fileName = document.createElement('span');
+                    fileName.className = 'file-list-item-name';
+                    fileName.textContent = file.name;
+                    
+                    const fileSize = document.createElement('span');
+                    fileSize.className = 'file-list-item-size';
+                    fileSize.textContent = formatFileSize(file.size);
+                    
+                    info.appendChild(fileName);
+                    info.appendChild(fileSize);
+                    
+                    item.appendChild(checkbox);
+                    item.appendChild(info);
+                    viewport.appendChild(item);
+                }
+            }
+            
+            // Initial render
+            renderVisibleItems();
+            
+            // Update on scroll with debouncing
+            let scrollTimeout;
+            container.onscroll = function() {
+                scrollTop = container.scrollTop;
                 
-                const fileName = document.createElement('span');
-                fileName.className = 'file-list-item-name';
-                fileName.textContent = file.name;
-                
-                const fileSize = document.createElement('span');
-                fileSize.className = 'file-list-item-size';
-                fileSize.textContent = formatFileSize(file.size);
-                
-                info.appendChild(fileName);
-                info.appendChild(fileSize);
-                
-                item.appendChild(checkbox);
-                item.appendChild(info);
-                container.appendChild(item);
-            });
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(renderVisibleItems, 10);
+            };
         }
         
         function toggleFileSelection(index) {
@@ -1831,7 +1912,16 @@
                 selectedFileIndices.push(index);
             }
             
-            renderFileList();
+            // Just update checkboxes without full re-render
+            const container = document.getElementById('fileListContainer');
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach((checkbox, idx) => {
+                const fileIndex = parseInt(checkbox.dataset.fileIndex);
+                if (!isNaN(fileIndex)) {
+                    checkbox.checked = selectedFileIndices.includes(fileIndex);
+                }
+            });
+            
             updateFileSelectionStats();
         }
         
@@ -1868,7 +1958,14 @@
             }
             
             allFilesSelected = !allFilesSelected;
-            renderFileList();
+            
+            // Update all visible checkboxes
+            const container = document.getElementById('fileListContainer');
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach((checkbox) => {
+                checkbox.checked = allFilesSelected;
+            });
+            
             updateFileSelectionStats();
         }
         
@@ -1878,8 +1975,14 @@
             setStep(1);
         }
         
-        function proceedDirectlyToFolderSelection() {
+        function proceedDirectlyToFolderSelection(torrentData = null) {
             selectedFileIndices = []; // Empty means download all files
+            
+            // If torrent data is provided, populate torrentFiles
+            if (torrentData && torrentData.files) {
+                torrentFiles = torrentData.files;
+            }
+            
             document.getElementById('magnet-section').classList.add('hidden');
             document.getElementById('folder-section').classList.remove('hidden');
             setStep(2);
@@ -1950,7 +2053,20 @@
             }
         }
         
-        function proceedToFolderSelection() {
+        function setButtonLoading(button, text = 'Loading...') {
+            if (!button) return;
+            button.dataset.originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg>${text}</span>`;
+        }
+        
+        function restoreButton(button) {
+            if (!button) return;
+            button.disabled = false;
+            button.innerHTML = button.dataset.originalText || 'Continue';
+        }
+        
+        function proceedToFolderSelection(loadingButton = null) {
             // Check if Plex is healthy before allowing any downloads
             if (!plexHealthy) {
                 showAlert('Cannot proceed: Plex connection is required to use this application.', 'error');
@@ -1982,19 +2098,24 @@
                     }
                 }
                 
-                // For manual magnet, check if it has multiple files
-                if (magnetLink && !selectedTorrentFile) {
-                    checkTorrentFiles();
+                // For manual magnet, check if it has multiple files (only if not already checked)
+                if (magnetLink && !selectedTorrentFile && torrentFiles.length === 0) {
+                    if (loadingButton) setButtonLoading(loadingButton, 'Fetching torrent info...');
+                    checkTorrentFiles(loadingButton);
                     return;
                 }
                 
                 document.getElementById('magnet-section').classList.add('hidden');
             }
             
+            // Update UI immediately before async operations
             document.getElementById('folder-section').classList.remove('hidden');
             setStep(2);
-            // Load from configured base path
-            loadFoldersFromBasePath();
+            
+            // Use setTimeout to allow UI to render before loading folders
+            setTimeout(() => {
+                loadFoldersFromBasePath();
+            }, 0);
         }
         
         async function loadFoldersFromBasePath() {
@@ -2124,6 +2245,10 @@
                 setStep(1);
             } else {
                 // Go back to source selection
+                // Clear torrent data so user can re-select and go through file selection again
+                torrentFiles = [];
+                selectedFileIndices = [];
+                
                 document.getElementById('folder-section').classList.add('hidden');
                 document.getElementById('magnet-section').classList.remove('hidden');
                 setStep(1);
@@ -2136,8 +2261,14 @@
             downloadButton.textContent = 'Starting...';
             
             // Store the files being downloaded
-            if (torrentFiles.length > 0 && selectedFileIndices.length > 0) {
-                downloadingFiles = selectedFileIndices.map(idx => torrentFiles[idx]);
+            if (torrentFiles.length > 0) {
+                if (selectedFileIndices.length > 0) {
+                    // Specific files selected
+                    downloadingFiles = selectedFileIndices.map(idx => torrentFiles[idx]);
+                } else {
+                    // No selection means all files
+                    downloadingFiles = torrentFiles;
+                }
             } else {
                 downloadingFiles = [];
             }

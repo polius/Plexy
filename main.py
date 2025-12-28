@@ -215,12 +215,12 @@ async def get_torrent_info(request: TorrentInfoRequest):
         
         # Extract file information
         files = []
+        file_storage = torrent_info.files()
         for i in range(torrent_info.num_files()):
-            file_entry = torrent_info.files().at(i)
             files.append({
                 'index': i,
-                'name': file_entry.path,
-                'size': file_entry.size
+                'name': file_storage.file_path(i),
+                'size': file_storage.file_size(i)
             })
         
         torrent_name = torrent_info.name()
@@ -263,12 +263,12 @@ async def get_torrent_info_from_file(file: UploadFile = File(...)):
         
         # Extract file information
         files = []
+        file_storage = torrent_info.files()
         for i in range(torrent_info.num_files()):
-            file_entry = torrent_info.files().at(i)
             files.append({
                 'index': i,
-                'name': file_entry.path,
-                'size': file_entry.size
+                'name': file_storage.file_path(i),
+                'size': file_storage.file_size(i)
             })
         
         torrent_name = torrent_info.name()
@@ -589,11 +589,11 @@ async def get_progress(download_id: str):
         torrent_info = handle.torrent_file()
         if torrent_info:
             num_files = torrent_info.num_files()
+            file_storage = torrent_info.files()
             # Calculate size only for files that are being downloaded
             for i in range(num_files):
                 if handle.file_priority(i) > 0:
-                    file_entry = torrent_info.files().at(i)
-                    total_size += file_entry.size
+                    total_size += file_storage.file_size(i)
             total_size = total_size / (1024 * 1024)  # Convert to MB
             
             # If no files have priority set (all selected), use total size
