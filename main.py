@@ -58,6 +58,7 @@ class MagnetRequest(BaseModel):
     download_path: str
     selected_files: list = None  # List of file indices to download
     skip_parent_folder: bool = False  # Skip creating parent folder
+    flatten_all: bool = False  # Flatten all subdirectories
 
 
 class CancelRequest(BaseModel):
@@ -408,19 +409,24 @@ async def start_download(request: MagnetRequest):
                     else:
                         handle.file_priority(i, 0)
         
-        # Handle skip parent folder option
-        if request.skip_parent_folder and handle.has_metadata():
-            # This is done by renaming files to remove the first directory component
+        # Handle skip parent folder option or flatten all
+        if handle.has_metadata():
             torrent_info = handle.torrent_file()
             if torrent_info:
+                file_storage = torrent_info.files()
                 for i in range(torrent_info.num_files()):
-                    file_entry = torrent_info.files().at(i)
-                    original_path = file_entry.path
-                    # Remove the first directory from the path
-                    path_parts = original_path.split('/', 1)
-                    if len(path_parts) > 1:
-                        new_path = path_parts[1]
+                    original_path = file_storage.file_path(i)
+                    
+                    if request.flatten_all:
+                        # Flatten all - keep only the filename
+                        new_path = os.path.basename(original_path)
                         handle.rename_file(i, new_path)
+                    elif request.skip_parent_folder:
+                        # Remove only the first directory from the path
+                        path_parts = original_path.split('/', 1)
+                        if len(path_parts) > 1:
+                            new_path = path_parts[1]
+                            handle.rename_file(i, new_path)
         
         # Generate download ID
         download_id = str(hash(request.magnet_link))[:16]
@@ -450,7 +456,8 @@ async def start_download_from_file(
     file: UploadFile = File(...), 
     download_path: str = Form(...),
     selected_files: str = Form(None),
-    skip_parent_folder: bool = Form(False)
+    skip_parent_folder: bool = Form(False),
+    flatten_all: bool = Form(False)
 ):
     """Start downloading a torrent from an uploaded .torrent file"""
     try:
@@ -512,12 +519,17 @@ async def start_download_from_file(
                 else:
                     handle.file_priority(i, 0)
         
-        # Handle skip parent folder option
-        if skip_parent_folder:
-            for i in range(torrent_info.num_files()):
-                file_entry = torrent_info.files().at(i)
-                original_path = file_entry.path
-                # Remove the first directory from the path
+        # Handle skip parent folder option or flatten all
+        file_storage = torrent_info.files()
+        for i in range(torrent_info.num_files()):
+            original_path = file_storage.file_path(i)
+            
+            if flatten_all:
+                # Flatten all - keep only the filename
+                new_path = os.path.basename(original_path)
+                handle.rename_file(i, new_path)
+            elif skip_parent_folder:
+                # Remove only the first directory from the path
                 path_parts = original_path.split('/', 1)
                 if len(path_parts) > 1:
                     new_path = path_parts[1]

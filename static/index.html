@@ -1180,6 +1180,13 @@
                 <div class="file-list-viewport" id="fileListViewport"></div>
             </div>
             
+            <div class="checkbox-option" style="margin: 16px 0;">
+                <input type="checkbox" id="flattenAllCheckbox" style="cursor: pointer;">
+                <label for="flattenAllCheckbox" style="cursor: pointer; user-select: none;">
+                    Save all files without subfolders (flatten directory structure)
+                </label>
+            </div>
+            
             <div class="btn-group" style="margin-top: 20px;">
                 <button class="btn btn-primary" onclick="proceedToFolderSelection(this)" id="proceedFromFileSelection">
                     Next: Select Folder →
@@ -1198,6 +1205,7 @@
                 <div class="folder-stats" id="folderStats"></div>
                 <div id="folderList"></div>
             </div>
+            
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="selectCurrentFolder()">
                     Download Here
@@ -2276,12 +2284,16 @@
             try {
                 let response;
                 
+                // Get flatten option
+                const flattenAll = document.getElementById('flattenAllCheckbox').checked;
+                
                 if (selectedTorrentFile) {
                     // Upload torrent file
                     const formData = new FormData();
                     formData.append('file', selectedTorrentFile);
                     formData.append('download_path', path);
                     formData.append('skip_parent_folder', 'true');
+                    formData.append('flatten_all', flattenAll ? 'true' : 'false');
                     
                     // Add selected files if any
                     if (selectedFileIndices.length > 0) {
@@ -2297,7 +2309,8 @@
                     const requestBody = {
                         magnet_link: magnetLink,
                         download_path: path,
-                        skip_parent_folder: true
+                        skip_parent_folder: true,
+                        flatten_all: flattenAll
                     };
                     
                     // Add file selection if any specific files were selected
