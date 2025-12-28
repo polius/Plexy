@@ -1,6 +1,19 @@
-# Plexy - Automated Torrent Downloader with Plex Integration
+<div align="center">
+<img src="logo.svg" alt="Plexy Logo" width="100" height="100" />
+<h1 align="center">Plexy</h1>
+</div>
 
-A web application for downloading torrents and automatically refreshing Plex libraries.
+<p align="center">
+<a href="https://github.com/polius/plexy/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/polius/plexy"></a>&nbsp;<a href="https://hub.docker.com/r/poliuscorp/plexy"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/poliuscorp/plexy"></a>
+</p>
+
+<br>
+
+<p align="center">
+<b>Plexy</b> is a lightweight web application for downloading torrents with integrated Nyaa.si search and automatic Plex library refresh, designed to streamline your media management workflow.
+</p>
+
+<br>
 
 ## Features
 
@@ -10,23 +23,53 @@ A web application for downloading torrents and automatically refreshing Plex lib
 - Cancel downloads with automatic cleanup
 - Automatically refresh Plex library when complete
 
-## Setup with Docker
+## Installation
 
-1. Edit `docker-compose.yml` and configure:
-   - **Volume**: Change `/path/to/your/plex/media` to your actual Plex media folder
-   - **PLEX_URL**: Set to your Plex server URL (use `http://host.docker.internal:32400` if Plex is on host)
-   - **PLEX_TOKEN**: Set your Plex authentication token
+The recommended installation method is **Docker**.
 
-   Get your Plex token: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
+#### Run with Docker CLI
 
-2. Build and run:
 ```bash
-docker compose up --build
+docker run -d \
+  --name plexy \
+  -p 8000:8000 \
+  -v /path/to/your/plex/media:/downloads \
+  -e PLEX_URL=http://host.docker.internal:32400 \
+  -e PLEX_TOKEN=YOUR_PLEX_TOKEN_HERE \
+  poliuscorp/plexy
 ```
 
-3. Open browser at `http://localhost:8000`
+- The `-v` flag mounts your Plex media folder where torrents will be downloaded.
+- Replace `/path/to/your/plex/media` with the folder on your host where you want Plexy to download torrents.
 
-4. Stop:
-```bash
-docker compose down
+#### Run with Docker Compose
+
+```yaml
+services:
+  plexy:
+    image: poliuscorp/plexy
+    container_name: plexy
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - /path/to/your/plex/media:/downloads
+    environment:
+      - PLEX_URL=http://host.docker.internal:32400
+      - PLEX_TOKEN=YOUR_PLEX_TOKEN_HERE
 ```
+
+Once deployed, access it through your browser:
+
+[http://localhost:8000](http://localhost:8000)
+
+## Environment Variables
+
+Plexy supports the following environment variables:
+
+| Variable | Sample Value | Details |
+| --- | --- | --- |
+| PLEX_URL | http://host.docker.internal:32400 | URL of your Plex server (use host.docker.internal if Plex is on host) |
+| PLEX_TOKEN | YOUR_PLEX_TOKEN_HERE | Plex authentication token for library refresh |
+
+Get your Plex token: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
