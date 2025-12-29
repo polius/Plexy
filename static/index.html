@@ -1778,9 +1778,26 @@
                 }
                 
                 if (!response.ok) {
-                    // If we can't get file info, proceed directly to folder selection
+                    // Handle error response from server
                     if (loadingButton) restoreButton(loadingButton);
-                    proceedDirectlyToFolderSelection();
+                    let errorMessage = 'Failed to load torrent information';
+                    
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.detail) {
+                            errorMessage = errorData.detail;
+                        }
+                    } catch (e) {
+                        // If we can't parse error JSON, use default message
+                    }
+                    
+                    if (response.status === 400) {
+                        showAlert(`Invalid torrent: ${errorMessage}`, 'error');
+                    } else if (response.status === 408) {
+                        showAlert('Timeout: Could not retrieve torrent metadata. The torrent may be invalid or has no seeders.', 'error');
+                    } else {
+                        showAlert(`Error: ${errorMessage}`, 'error');
+                    }
                     return;
                 }
                 
@@ -1788,7 +1805,7 @@
                 
                 if (loadingButton) restoreButton(loadingButton);
                 
-                if (data.num_files > 1) {
+                if (data.num_files >= 1) {
                     // Show file selection screen
                     showFileSelection(data);
                 } else {
@@ -1798,8 +1815,7 @@
             } catch (error) {
                 console.error('Error getting torrent info:', error);
                 if (loadingButton) restoreButton(loadingButton);
-                // On error, proceed directly to folder selection
-                proceedDirectlyToFolderSelection();
+                showAlert('Error loading torrent: ' + error.message, 'error');
             }
         }
         
