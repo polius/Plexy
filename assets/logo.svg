@@ -1,7 +1,10 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#E5A00D" d="M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z"/>
+    <defs>
+        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <path fill="url(#logoGradient)" d="M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z"/>
     <path fill="#FFF" d="M200 352V160l128 96-128 96z"/>
-    <g fill="#282A2D">
-        <path d="M200 352V160l128 96-128 96z"/>
-    </g>
 </svg>

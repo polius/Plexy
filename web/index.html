@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plexy - Modern Torrent Downloader for Plex</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'><path fill='%236366f1' d='M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z'/><path fill='%23FFF' d='M200 352V160l128 96-128 96z'/></svg>">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <div class="container">
+        <!-- Header with Logo -->
+        <a href="/" style="text-decoration: none; color: inherit;">
+            <h1>
+                <svg class="plex-logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <path fill="url(#logoGradient)" d="M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z"/>
+                    <path fill="#FFF" d="M200 352V160l128 96-128 96z"/>
+                </svg>
+                Plexy
+                <span style="font-size: 14px; font-weight: 600; margin-left: -5px; margin-top: 15px; letter-spacing: 0.03em; opacity: 0.7;">v1.2.0</span>
+            </h1>
+        </a>
+        <p class="subtitle">🚀 Automated Torrent Management with Seamless Plex Integration</p>
+        
+        <!-- Progress Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Source</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Destination</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Download</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">Plex</div>
+            </div>
+        </div>
+        
+        <!-- Step 1: Torrent Source Selection -->
+        <div class="section" id="magnet-section">           
+            <div class="tabs" role="tablist" aria-label="Torrent source selection">
+                <button class="tab active" role="tab" aria-selected="true" aria-controls="file-tab" onclick="switchTab('file')">
+                    📁 Torrent File
+                </button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="manual-tab" onclick="switchTab('manual')">
+                    🧲 Magnet Link
+                </button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="nyaa-tab" onclick="switchTab('nyaa')">
+                    🔍 Nyaa Search
+                </button>
+            </div>
+            
+            <!-- Tab 1: Torrent File Upload -->
+            <div class="tab-content active" id="file-tab" role="tabpanel">
+                <input type="file" id="torrentFileInput" accept=".torrent" style="display: none;" onchange="handleFileSelect(event)" aria-label="Select torrent file">
+                
+                <div class="file-upload-container">
+                    <div class="file-upload-box" onclick="document.getElementById('torrentFileInput').click()">
+                        <div class="file-upload-icon">📦</div>
+                        <div class="file-upload-text">
+                            <div class="file-upload-title">Upload Torrent File</div>
+                            <div class="file-upload-hint">Click to browse or drag & drop your .torrent file here</div>
+                        </div>
+                    </div>
+                    
+                    <div id="fileInfo" class="file-info-display"></div>
+                    
+                    <button class="btn btn-primary btn-fullwidth" id="proceedFromFile" onclick="proceedFromFile()" disabled style="display: none;">
+                        Continue to Folder Selection →
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tab 2: Manual Magnet Link Input -->
+            <div class="tab-content" id="manual-tab" role="tabpanel">
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div>
+                        <label for="magnetInput" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--gray-700); font-size: 14px;">
+                            Magnet Link
+                        </label>
+                        <input type="text" id="magnetInput" placeholder="magnet:?xt=urn:btih:..." aria-label="Enter magnet link" oninput="torrentFiles = []; selectedFileIndices = [];">
+                        <div class="keyboard-hint"><span class="kbd">Enter</span> to continue</div>
+                    </div>
+                    <button class="btn btn-primary btn-fullwidth" onclick="proceedToFolderSelection(this)">
+                        Continue to Folder Selection →
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tab 3: Nyaa.si Search -->
+            <div class="tab-content" id="nyaa-tab" role="tabpanel">
+                <div class="search-box">
+                    <input type="text" id="nyaaSearch" placeholder="Search for anime torrents on nyaa.si..." aria-label="Search nyaa.si" style="flex: 1;">
+                    <button class="btn btn-primary" onclick="searchNyaa()">
+                        🔍 Search
+                    </button>
+                </div>
+                <div class="keyboard-hint" style="margin-top: -12px; margin-bottom: 12px;"><span class="kbd">Enter</span> to search</div>
+                <div id="searchResults" role="region" aria-live="polite"></div>
+            </div>
+        </div>
+        
+        <!-- Step 1.5: File Selection (Multi-file Torrents) -->
+        <div class="section hidden" id="file-selection-section">
+            <div class="section-title">📦 Select Files to Download</div>
+            <div id="torrentInfoDisplay" style="margin-bottom: 16px; padding: 16px; background: var(--primary-light); border-radius: var(--radius-lg); border: 2px solid var(--primary);"></div>
+            
+            <div class="file-selection-header">
+                <div class="file-selection-stats">
+                    <span id="selectedFileCount">0</span> of <span id="totalFileCount">0</span> files selected
+                    (<span id="selectedFileSize">0 B</span> of <span id="totalFileSize">0 B</span>)
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="toggleAllFiles()" id="toggleAllBtn">Select All</button>
+            </div>
+            
+            <div class="file-list-container" id="fileListContainer">
+                <div class="file-list-viewport" id="fileListViewport"></div>
+            </div>
+            
+            <div class="checkbox-option" style="margin: 16px 0;">
+                <input type="checkbox" id="flattenAllCheckbox">
+                <label for="flattenAllCheckbox">
+                    📂 Save all files without subfolders (flatten directory structure)
+                </label>
+            </div>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="proceedToFolderSelection(this)" id="proceedFromFileSelection">
+                    Continue to Folder Selection →
+                </button>
+                <button class="btn btn-secondary" onclick="goBackToSource()">
+                    ← Back
+                </button>
+            </div>
+        </div>
+        
+        <!-- Step 2: Download Destination Selection -->
+        <div class="section hidden" id="folder-section">
+            <div class="section-title">📍 Select Download Destination</div>
+            <div class="folder-browser" id="folderBrowser" role="navigation" aria-label="Folder browser">
+                <div class="current-path" id="currentPath" aria-live="polite">/</div>
+                <div class="folder-stats" id="folderStats"></div>
+                <div id="folderList"></div>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="selectCurrentFolder()">
+                    ✓ Download to This Folder
+                </button>
+                <button class="btn btn-secondary" onclick="goBack()">
+                    ← Back
+                </button>
+            </div>
+        </div>
+        
+        <!-- Step 3: Download Progress Tracking -->
+        <div class="progress-container" id="progressContainer">
+            <div class="section-title">⬇️ Download in Progress</div>
+            <div id="downloadName" style="font-weight: 700; margin-bottom: 12px; color: var(--gray-900); font-size: 16px;">Initializing download...</div>
+            
+            <div class="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-bar" id="progressBar">0%</div>
+            </div>
+            
+            <div class="progress-info">
+                <div class="progress-item">
+                    <div class="progress-label">⬇️ Download</div>
+                    <div class="progress-value" id="downloadSpeed">0 KB/s</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">⬆️ Upload</div>
+                    <div class="progress-value" id="uploadSpeed">0 KB/s</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">👥 Seeds / Peers</div>
+                    <div class="progress-value" id="peers">0 / 0</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">💾 Downloaded</div>
+                    <div class="progress-value" id="downloaded">0 MB</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">⏱️ Elapsed</div>
+                    <div class="progress-value" id="timeElapsed">0s</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">⏳ Remaining</div>
+                    <div class="progress-value" id="eta">Calculating...</div>
+                </div>
+            </div>
+            
+            <!-- Files being downloaded -->
+            <div id="downloadingFilesList" style="display: none; margin-top: 24px; margin-bottom: 24px;">
+                <div style="background: white; border: 2px solid var(--gray-200); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm);">
+                    <div style="font-size: 15px; font-weight: 700; color: var(--gray-900); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--gray-200); display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 20px;">📦</span>
+                        <span>Files in Download Queue</span>
+                    </div>
+                    <div id="downloadingFilesContent" style="max-height: 250px; overflow-y: auto; font-size: 14px;"></div>
+                </div>
+            </div>
+            
+            <div class="btn-group" style="margin-top: 24px;">
+                <button class="btn btn-danger btn-fullwidth" onclick="cancelDownload()" id="cancelBtn">
+                    ✕ Cancel Download
+                </button>
+            </div>
+            <button class="btn btn-success btn-fullwidth" onclick="proceedToPlex()" id="proceedPlexBtn" style="display: none; margin-top: 16px;">
+                ✓ Download Complete - Update Plex →
+            </button>
+            <button class="btn btn-outline-primary btn-fullwidth" onclick="startOver()" id="newDownloadBtnProgress" style="display: none; margin-top: 12px;">
+                ↩ Start New Download
+            </button>
+        </div>
+        
+        <!-- Step 4: Plex Library Refresh -->
+        <div class="section plex-section" id="plex-section">
+            <div id="alertContainer" role="alert" aria-live="polite"></div>
+            <div class="section-title">🎬 Update Plex Media Library</div>
+            <div style="margin-bottom: 20px;">
+                <label for="plexLibrary" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--gray-700); font-size: 14px;">
+                    Select Library to Refresh
+                </label>
+                <select id="plexLibrary" aria-label="Select Plex library" onchange="onLibrarySelected()">
+                    <option value="">Loading libraries...</option>
+                </select>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-success btn-fullwidth" onclick="refreshPlex()" id="refreshLibraryBtn" disabled>
+                    ↻ Refresh Plex Library
+                </button>
+            </div>
+            <button class="btn btn-outline-primary btn-fullwidth" onclick="startOver()" style="margin-top: 12px;">
+                ↩ Start New Download
+            </button>
+        </div>
+    </div>
+    
+    <!-- JavaScript (same as before) -->
+    <script>
+        let currentPath = '/';
+        let magnetLink = '';
+        let downloadId = null;
+        let progressInterval = null;
+        let selectedSearchResult = null;
+        let selectedTorrentFile = null;
+        let plexHealthy = false;
+        let plexHealthChecked = false;
+        
+        // File selection variables
+        let torrentFiles = [];
+        let selectedFileIndices = [];
+        let allFilesSelected = true;
+        let downloadingFiles = [];
+        
+        // Session restoration
+        function checkAndRestoreSession() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlDownloadId = urlParams.get('download_id');
+            const urlStep = urlParams.get('step');
+            
+            if (urlDownloadId) {
+                downloadId = urlDownloadId;
+                
+                if (urlStep === 'plex') {
+                    document.getElementById('magnet-section').classList.add('hidden');
+                    document.getElementById('progressContainer').style.display = 'none';
+                    document.getElementById('plex-section').style.display = 'block';
+                    setStep(4);
+                } else {
+                    document.getElementById('magnet-section').classList.add('hidden');
+                    document.getElementById('progressContainer').style.display = 'block';
+                    setStep(3);
+                    progressInterval = setInterval(updateProgress, 1000);
+                    updateProgress();
+                }
+            }
+        }
+        
+        function updateURLWithDownloadId(id, step = 'download') {
+            const url = new URL(window.location);
+            url.searchParams.set('download_id', id);
+            url.searchParams.set('step', step);
+            window.history.pushState({}, '', url);
+        }
+        
+        function updateURLStep(step) {
+            const url = new URL(window.location);
+            if (downloadId) {
+                url.searchParams.set('download_id', downloadId);
+                url.searchParams.set('step', step);
+                window.history.pushState({}, '', url);
+            }
+        }
+        
+        function clearDownloadIdFromURL() {
+            const url = new URL(window.location);
+            url.searchParams.delete('download_id');
+            url.searchParams.delete('step');
+            window.history.pushState({}, '', url);
+        }
+        
+        function formatTime(seconds) {
+            if (seconds < 0 || !isFinite(seconds)) return 'Unknown';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+            if (minutes > 0) return `${minutes}m ${secs}s`;
+            return `${secs}s`;
+        }
+        
+        checkPlexHealth();
+        checkAndRestoreSession();
+        
+        async function checkPlexHealth() {
+            try {
+                const response = await fetch('/api/plex/health');
+                if (response.ok) {
+                    plexHealthy = true;
+                    plexHealthChecked = true;
+                    await loadPlexLibraries();
+                } else {
+                    throw new Error('Plex health check failed');
+                }
+            } catch (error) {
+                console.error('Plex health check failed:', error);
+                plexHealthy = false;
+                plexHealthChecked = true;
+                
+                const container = document.querySelector('.container');
+                const errorBanner = document.createElement('div');
+                errorBanner.style.cssText = `
+                    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                    border: 2px solid #ef4444;
+                    border-radius: 16px;
+                    padding: 28px;
+                    margin-bottom: 32px;
+                    box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.2);
+                `;
+                errorBanner.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; gap: 20px;">
+                        <div style="flex-shrink: 0; width: 56px; height: 56px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; font-weight: bold; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);">!</div>
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 12px 0; color: #991b1b; font-size: 20px; font-weight: 800;">Plex Connection Required</h3>
+                            <p style="margin: 0 0 16px 0; color: #7f1d1d; font-size: 15px; line-height: 1.6;">Unable to establish connection with your Plex Media Server. This application requires a valid Plex connection to function properly.</p>
+                            <div style="background: rgba(127, 29, 29, 0.1); border-radius: 12px; padding: 16px; margin-top: 16px;">
+                                <p style="margin: 0 0 12px 0; color: #7f1d1d; font-size: 14px; font-weight: 700;">🔧 Troubleshooting Steps:</p>
+                                <ul style="margin: 0; padding-left: 24px; color: #7f1d1d; font-size: 14px; line-height: 2;">
+                                    <li>Verify <code style="background: rgba(0,0,0,0.15); padding: 3px 8px; border-radius: 6px; font-family: monospace; font-weight: 600;">PLEX_URL</code> environment variable</li>
+                                    <li>Ensure <code style="background: rgba(0,0,0,0.15); padding: 3px 8px; border-radius: 6px; font-family: monospace; font-weight: 600;">PLEX_TOKEN</code> is valid</li>
+                                    <li>Check that Plex Media Server is running</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertBefore(errorBanner, container.firstChild.nextSibling);
+                
+                // Disable UI
+                document.querySelectorAll('.tab, #magnetInput, #nyaaSearch, #torrentFileInput, #magnet-section .btn').forEach(el => {
+                    el.disabled = true;
+                    el.style.opacity = '0.5';
+                    el.style.cursor = 'not-allowed';
+                    el.style.pointerEvents = 'none';
+                });
+                
+                const fileUploadBox = document.querySelector('.file-upload-box');
+                if (fileUploadBox) {
+                    fileUploadBox.style.opacity = '0.5';
+                    fileUploadBox.style.cursor = 'not-allowed';
+                    fileUploadBox.style.pointerEvents = 'none';
+                }
+                
+                document.getElementById('plexLibrary').innerHTML = '<option value="">Plex not available</option>';
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const nyaaSearch = document.getElementById('nyaaSearch');
+            if (nyaaSearch) {
+                nyaaSearch.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') searchNyaa();
+                });
+            }
+            
+            const magnetInput = document.getElementById('magnetInput');
+            if (magnetInput) {
+                magnetInput.focus();
+                magnetInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const btn = this.closest('.tab-content').querySelector('.btn-primary');
+                        if (btn) btn.click();
+                    }
+                });
+            }
+            
+            const fileUploadBox = document.querySelector('.file-upload-box');
+            const fileInput = document.getElementById('torrentFileInput');
+            
+            if (fileUploadBox && fileInput) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    fileUploadBox.addEventListener(eventName, preventDefaults, false);
+                    document.body.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    fileUploadBox.addEventListener(eventName, function() {
+                        fileUploadBox.style.borderColor = 'var(--primary)';
+                        fileUploadBox.style.background = 'var(--primary-light)';
+                    }, false);
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    fileUploadBox.addEventListener(eventName, function() {
+                        fileUploadBox.style.borderColor = '';
+                        fileUploadBox.style.background = '';
+                    }, false);
+                });
+                
+                fileUploadBox.addEventListener('drop', function(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    if (files.length > 0) {
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(files[0]);
+                        fileInput.files = dataTransfer.files;
+                        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }, false);
+            }
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+        
+        function switchTab(tabName) {
+            if (!plexHealthy) {
+                showAlert('Cannot switch tabs: Plex connection required', 'error');
+                return;
+            }
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                const isActive = tab.getAttribute('onclick').includes(tabName);
+                tab.classList.toggle('active', isActive);
+                tab.setAttribute('aria-selected', isActive);
+            });
+            
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            const targetTab = document.getElementById(tabName + '-tab');
+            if (targetTab) targetTab.classList.add('active');
+            
+            magnetLink = '';
+            selectedSearchResult = null;
+            selectedTorrentFile = null;
+            
+            const fileInput = document.getElementById('torrentFileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const proceedFromFile = document.getElementById('proceedFromFile');
+            if (fileInput) fileInput.value = '';
+            if (fileInfo) {
+                fileInfo.textContent = '';
+                fileInfo.classList.remove('active');
+            }
+            if (proceedFromFile) {
+                proceedFromFile.disabled = true;
+                proceedFromFile.style.display = 'none';
+            }
+            
+            setTimeout(() => {
+                if (tabName === 'manual') document.getElementById('magnetInput').focus();
+                else if (tabName === 'nyaa') document.getElementById('nyaaSearch').focus();
+            }, 0);
+        }
+        
+        async function searchNyaa() {
+            if (!plexHealthy) {
+                showAlert('Cannot search: Plex connection required', 'error');
+                return;
+            }
+            
+            const query = document.getElementById('nyaaSearch').value.trim();
+            if (!query) {
+                showAlert('Please enter a search query', 'error');
+                return;
+            }
+            
+            const resultsContainer = document.getElementById('searchResults');
+            const searchButton = event.target;
+            searchButton.disabled = true;
+            searchButton.textContent = '🔍 Searching...';
+            
+            resultsContainer.innerHTML = '<div class="loading">Searching nyaa.si...</div>';
+            
+            try {
+                const response = await fetch(`/api/search/nyaa?query=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (!data.results || data.results.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-title">No results found</div>
+                            <div class="empty-state-description">Try different search terms</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                data.results.sort((a, b) => b.seeders - a.seeders);
+                
+                resultsContainer.innerHTML = '<div class="search-results">' +
+                    data.results.map((result, index) => `
+                        <div class="result-item" onclick="selectSearchResult(${index}, event)" data-magnet="${escapeHtml(result.magnet)}" tabindex="0" role="button">
+                            <div class="result-name">${escapeHtml(result.name)}</div>
+                            <div class="result-meta">
+                                <span>📅 ${escapeHtml(result.date)}</span>
+                                <span>💾 ${escapeHtml(result.size)}</span>
+                                <span class="result-badge seeders">🌱 ${escapeHtml(result.seeders)}</span>
+                                <span class="result-badge leechers">👥 ${escapeHtml(result.leechers)}</span>
+                                <span>🏷️ ${escapeHtml(result.category)}</span>
+                            </div>
+                        </div>
+                    `).join('') + '</div>';
+                
+                window.searchResults = data.results;
+                resultsContainer.innerHTML += '<button class="btn btn-primary btn-fullwidth" id="proceedFromSearch" onclick="proceedFromSearch()" disabled style="margin-top: 24px;">Continue to Folder Selection →</button>';
+                
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="alert alert-error">Error: ${escapeHtml(error.message)}</div>`;
+            } finally {
+                searchButton.disabled = false;
+                searchButton.textContent = '🔍 Search';
+            }
+        }
+        
+        function selectSearchResult(index, evt) {
+            if (evt) {
+                evt.preventDefault();
+                evt.stopPropagation();
+            }
+            
+            document.querySelectorAll('.result-item').forEach(item => {
+                item.classList.remove('selected');
+                item.setAttribute('aria-selected', 'false');
+            });
+            
+            const selectedItem = evt ? evt.currentTarget : document.querySelectorAll('.result-item')[index];
+            selectedItem.classList.add('selected');
+            selectedItem.setAttribute('aria-selected', 'true');
+            selectedSearchResult = window.searchResults[index];
+            magnetLink = selectedSearchResult.magnet;
+            
+            torrentFiles = [];
+            selectedFileIndices = [];
+            
+            const proceedButton = document.getElementById('proceedFromSearch');
+            if (proceedButton) proceedButton.disabled = false;
+        }
+        
+        function proceedFromSearch() {
+            if (!magnetLink) {
+                showAlert('Please select a torrent first', 'error');
+                return;
+            }
+            proceedToFolderSelection(document.getElementById('proceedFromSearch'));
+        }
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.name.endsWith('.torrent')) {
+                showAlert('Please select a valid .torrent file', 'error');
+                event.target.value = '';
+                return;
+            }
+            
+            torrentFiles = [];
+            selectedFileIndices = [];
+            selectedTorrentFile = file;
+            
+            const fileInfo = document.getElementById('fileInfo');
+            const proceedButton = document.getElementById('proceedFromFile');
+            
+            fileInfo.innerHTML = `<strong>✓ Selected:</strong> ${escapeHtml(file.name)} <span style="color: var(--gray-500);">(${(file.size / 1024).toFixed(2)} KB)</span>`;
+            fileInfo.classList.add('active');
+            proceedButton.disabled = false;
+            proceedButton.style.display = 'block';
+        }
+        
+        function proceedFromFile() {
+            if (!selectedTorrentFile) {
+                showAlert('Please select a torrent file first', 'error');
+                return;
+            }
+            checkTorrentFiles();
+        }
+        
+        async function checkTorrentFiles(loadingButton = null) {
+            try {
+                let response;
+                
+                if (selectedTorrentFile) {
+                    const formData = new FormData();
+                    formData.append('file', selectedTorrentFile);
+                    response = await fetch('/api/torrent/info/file', {
+                        method: 'POST',
+                        body: formData
+                    });
+                } else if (magnetLink) {
+                    response = await fetch('/api/torrent/info', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ magnet_link: magnetLink })
+                    });
+                }
+                
+                if (!response.ok) {
+                    if (loadingButton) restoreButton(loadingButton);
+                    let errorMessage = 'Failed to load torrent information';
+                    
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.detail) errorMessage = errorData.detail;
+                    } catch (e) {}
+                    
+                    if (response.status === 400) {
+                        showAlert(`Invalid torrent: ${errorMessage}`, 'error');
+                    } else if (response.status === 408) {
+                        showAlert('Timeout: Could not retrieve metadata', 'error');
+                    } else {
+                        showAlert(`Error: ${errorMessage}`, 'error');
+                    }
+                    return;
+                }
+                
+                const data = await response.json();
+                if (loadingButton) restoreButton(loadingButton);
+                
+                if (data.num_files >= 1) {
+                    showFileSelection(data);
+                } else {
+                    proceedDirectlyToFolderSelection(data);
+                }
+            } catch (error) {
+                console.error('Error getting torrent info:', error);
+                if (loadingButton) restoreButton(loadingButton);
+                showAlert('Error loading torrent: ' + error.message, 'error');
+            }
+        }
+        
+        function showFileSelection(torrentData) {
+            torrentFiles = torrentData.files;
+            selectedFileIndices = torrentData.files.map((f, idx) => idx);
+            allFilesSelected = true;
+            
+            document.getElementById('torrentInfoDisplay').innerHTML = `
+                <div style="font-weight: 700; margin-bottom: 6px; word-break: break-word; font-size: 16px;">${escapeHtml(torrentData.name)}</div>
+                <div style="font-size: 14px; color: var(--gray-600); font-weight: 600;">
+                    ${torrentData.num_files} files • Total: ${formatFileSize(torrentData.total_size)}
+                </div>
+            `;
+            
+            document.getElementById('totalFileCount').textContent = torrentData.num_files;
+            renderFileList();
+            updateFileSelectionStats();
+            
+            document.getElementById('magnet-section').classList.add('hidden');
+            const fileSection = document.getElementById('file-selection-section');
+            fileSection.classList.remove('hidden');
+            setStep(1);
+            scrollToElement(fileSection);
+        }
+        
+        function renderFileList() {
+            const container = document.getElementById('fileListContainer');
+            const viewport = document.getElementById('fileListViewport');
+            const ITEM_HEIGHT = 49;
+            const BUFFER_SIZE = 10;
+            
+            let scrollTop = 0;
+            const totalHeight = torrentFiles.length * ITEM_HEIGHT;
+            
+            viewport.innerHTML = '';
+            const spacer = document.createElement('div');
+            spacer.className = 'file-list-spacer';
+            spacer.style.height = totalHeight + 'px';
+            viewport.appendChild(spacer);
+            
+            function renderVisibleItems() {
+                const containerHeight = container.clientHeight;
+                const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_SIZE);
+                const endIndex = Math.min(torrentFiles.length, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER_SIZE);
+                
+                const existingItems = viewport.querySelectorAll('.file-list-item');
+                existingItems.forEach(item => item.remove());
+                
+                for (let index = startIndex; index < endIndex; index++) {
+                    const file = torrentFiles[index];
+                    const item = document.createElement('div');
+                    item.className = 'file-list-item';
+                    item.style.position = 'absolute';
+                    item.style.top = (index * ITEM_HEIGHT) + 'px';
+                    item.style.left = '0';
+                    item.style.right = '0';
+                    item.style.height = ITEM_HEIGHT + 'px';
+                    item.onclick = () => toggleFileSelection(index);
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = selectedFileIndices.includes(index);
+                    checkbox.dataset.fileIndex = index;
+                    checkbox.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleFileSelection(index);
+                    };
+                    
+                    const info = document.createElement('div');
+                    info.className = 'file-list-item-info';
+                    
+                    const fileName = document.createElement('span');
+                    fileName.className = 'file-list-item-name';
+                    fileName.textContent = file.name;
+                    
+                    const fileSize = document.createElement('span');
+                    fileSize.className = 'file-list-item-size';
+                    fileSize.textContent = formatFileSize(file.size);
+                    
+                    info.appendChild(fileName);
+                    info.appendChild(fileSize);
+                    item.appendChild(checkbox);
+                    item.appendChild(info);
+                    viewport.appendChild(item);
+                }
+            }
+            
+            renderVisibleItems();
+            
+            let scrollTimeout;
+            container.onscroll = function() {
+                scrollTop = container.scrollTop;
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(renderVisibleItems, 10);
+            };
+        }
+        
+        function toggleFileSelection(index) {
+            if (selectedFileIndices.includes(index)) {
+                selectedFileIndices = selectedFileIndices.filter(i => i !== index);
+            } else {
+                selectedFileIndices.push(index);
+            }
+            
+            const container = document.getElementById('fileListContainer');
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                const fileIndex = parseInt(checkbox.dataset.fileIndex);
+                if (!isNaN(fileIndex)) {
+                    checkbox.checked = selectedFileIndices.includes(fileIndex);
+                }
+            });
+            
+            updateFileSelectionStats();
+        }
+        
+        function updateFileSelectionStats() {
+            const selectedCount = selectedFileIndices.length;
+            const totalCount = torrentFiles.length;
+            
+            document.getElementById('selectedFileCount').textContent = selectedCount;
+            
+            const selectedSize = torrentFiles.filter((f, idx) => selectedFileIndices.includes(idx)).reduce((sum, f) => sum + f.size, 0);
+            const totalSize = torrentFiles.reduce((sum, f) => sum + f.size, 0);
+            
+            document.getElementById('selectedFileSize').textContent = formatFileSize(selectedSize);
+            document.getElementById('totalFileSize').textContent = formatFileSize(totalSize);
+            
+            const toggleBtn = document.getElementById('toggleAllBtn');
+            allFilesSelected = selectedCount === totalCount;
+            toggleBtn.textContent = allFilesSelected ? 'Deselect All' : 'Select All';
+            
+            document.getElementById('proceedFromFileSelection').disabled = selectedCount === 0;
+        }
+        
+        function toggleAllFiles() {
+            if (allFilesSelected) {
+                selectedFileIndices = [];
+            } else {
+                selectedFileIndices = torrentFiles.map((f, idx) => idx);
+            }
+            
+            allFilesSelected = !allFilesSelected;
+            
+            const container = document.getElementById('fileListContainer');
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => checkbox.checked = allFilesSelected);
+            
+            updateFileSelectionStats();
+        }
+        
+        function goBackToSource() {
+            document.getElementById('file-selection-section').classList.add('hidden');
+            document.getElementById('magnet-section').classList.remove('hidden');
+            setStep(1);
+        }
+        
+        function proceedDirectlyToFolderSelection(torrentData = null) {
+            selectedFileIndices = [];
+            if (torrentData && torrentData.files) {
+                torrentFiles = torrentData.files;
+            }
+            
+            document.getElementById('magnet-section').classList.add('hidden');
+            const folderSection = document.getElementById('folder-section');
+            folderSection.classList.remove('hidden');
+            setStep(2);
+            scrollToElement(folderSection);
+            loadFoldersFromBasePath();
+        }
+        
+        function displayDownloadingFiles() {
+            const filesList = document.getElementById('downloadingFilesList');
+            const filesContent = document.getElementById('downloadingFilesContent');
+            
+            if (downloadingFiles.length > 0) {
+                filesList.style.display = 'block';
+                filesContent.innerHTML = downloadingFiles.map((file, index) => 
+                    `<div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--gray-50); border-radius: var(--radius-md); margin-bottom: 10px; transition: all 0.2s; border: 1px solid var(--gray-200);" onmouseover="this.style.background='var(--primary-light)'; this.style.borderColor='var(--primary)';" onmouseout="this.style.background='var(--gray-50)'; this.style.borderColor='var(--gray-200)';">
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
+                            <span style="color: var(--primary); font-size: 13px; font-weight: 700; min-width: 28px; background: white; padding: 4px 8px; border-radius: 6px;">#${index + 1}</span>
+                            <span style="word-break: break-word; color: var(--gray-800); flex: 1; font-weight: 500;">${escapeHtml(file.name)}</span>
+                        </div>
+                        <span style="white-space: nowrap; color: var(--gray-600); font-weight: 700; font-size: 13px; background: white; padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">${formatFileSize(file.size)}</span>
+                    </div>`
+                ).join('');
+            } else {
+                filesList.style.display = 'none';
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function loadPlexLibraries() {
+            try {
+                const response = await fetch('/api/plex/libraries');
+                const data = await response.json();
+                const select = document.getElementById('plexLibrary');
+                select.innerHTML = '<option value="">Select a library...</option>';
+                data.libraries.forEach(lib => {
+                    const option = document.createElement('option');
+                    option.value = lib.title;
+                    option.textContent = lib.title;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading Plex libraries:', error);
+                document.getElementById('plexLibrary').innerHTML = '<option value="">Error loading libraries</option>';
+            }
+        }
+        
+        function setStep(stepNumber) {
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`step${i}`);
+                step.classList.remove('active', 'completed');
+                if (i < stepNumber) {
+                    step.classList.add('completed');
+                } else if (i === stepNumber) {
+                    step.classList.add('active');
+                }
+            }
+        }
+        
+        function setButtonLoading(button, text = 'Loading...') {
+            if (!button) return;
+            button.dataset.originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg>${text}</span>`;
+        }
+        
+        function restoreButton(button) {
+            if (!button) return;
+            button.disabled = false;
+            button.innerHTML = button.dataset.originalText || 'Continue';
+        }
+        
+        function proceedToFolderSelection(loadingButton = null) {
+            if (!plexHealthy) {
+                showAlert('Cannot proceed: Plex connection required', 'error');
+                return;
+            }
+            
+            const fileSelectionSection = document.getElementById('file-selection-section');
+            if (!fileSelectionSection.classList.contains('hidden')) {
+                if (selectedFileIndices.length === 0) {
+                    showAlert('Please select at least one file', 'error');
+                    return;
+                }
+                fileSelectionSection.classList.add('hidden');
+            } else {
+                if (!selectedTorrentFile) {
+                    if (!magnetLink) {
+                        const magnetInput = document.getElementById('magnetInput');
+                        if (magnetInput) magnetLink = magnetInput.value.trim();
+                    }
+                    
+                    if (!magnetLink || !magnetLink.startsWith('magnet:')) {
+                        showAlert('Please enter a valid magnet link', 'error');
+                        return;
+                    }
+                }
+                
+                if (magnetLink && !selectedTorrentFile && torrentFiles.length === 0) {
+                    if (loadingButton) setButtonLoading(loadingButton, 'Fetching info...');
+                    checkTorrentFiles(loadingButton);
+                    return;
+                }
+                
+                document.getElementById('magnet-section').classList.add('hidden');
+            }
+            
+            document.getElementById('folder-section').classList.remove('hidden');
+            setStep(2);
+            scrollToElement(document.getElementById('folder-section'));
+            setTimeout(() => loadFoldersFromBasePath(), 0);
+        }
+        
+        async function loadFoldersFromBasePath() {
+            try {
+                const response = await fetch('/api/config/base-path');
+                const data = await response.json();
+                loadFolders(data.base_path || '/');
+            } catch (error) {
+                console.error('Error getting base path:', error);
+                loadFolders('/');
+            }
+        }
+        
+        async function loadFolders(path) {
+            try {
+                const folderBrowser = document.getElementById('folderBrowser');
+                folderBrowser.style.opacity = '0.6';
+                
+                const url = path ? `/api/folders?path=${encodeURIComponent(path)}` : '/api/folders';
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                currentPath = data.current_path;
+                document.getElementById('currentPath').textContent = currentPath;
+                
+                const folderStats = document.getElementById('folderStats');
+                folderStats.innerHTML = `
+                    <div class="stat-item"><span>📁</span><span>${data.folder_count || 0} folder${data.folder_count !== 1 ? 's' : ''}</span></div>
+                    <div class="stat-item"><span>📄</span><span>${data.file_count || 0} file${data.file_count !== 1 ? 's' : ''}</span></div>
+                `;
+                
+                const folderList = document.getElementById('folderList');
+                folderList.innerHTML = '';
+                
+                if (data.parent_path) {
+                    const parentItem = document.createElement('div');
+                    parentItem.className = 'folder-item';
+                    parentItem.innerHTML = '<span class="folder-icon">↑</span><span>.. (Parent folder)</span>';
+                    parentItem.onclick = () => loadFolders(data.parent_path);
+                    parentItem.setAttribute('tabindex', '0');
+                    parentItem.setAttribute('role', 'button');
+                    parentItem.onkeypress = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            loadFolders(data.parent_path);
+                        }
+                    };
+                    folderList.appendChild(parentItem);
+                }
+                
+                const folders = data.folders || [];
+                folders.forEach(folder => {
+                    const item = document.createElement('div');
+                    item.className = 'folder-item';
+                    item.innerHTML = `<span class="folder-icon">📁</span><span>${escapeHtml(folder.name)}</span>`;
+                    item.onclick = () => loadFolders(folder.path);
+                    item.setAttribute('tabindex', '0');
+                    item.setAttribute('role', 'button');
+                    item.onkeypress = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            loadFolders(folder.path);
+                        }
+                    };
+                    folderList.appendChild(item);
+                });
+                
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(file => {
+                        const item = document.createElement('div');
+                        item.className = 'file-item';
+                        const fileSize = formatFileSize(file.size);
+                        item.innerHTML = `
+                            <div class="file-info">
+                                <span class="file-icon">📄</span>
+                                <span>${escapeHtml(file.name)}</span>
+                            </div>
+                            <span class="file-size">${fileSize}</span>
+                        `;
+                        folderList.appendChild(item);
+                    });
+                }
+                
+                if (folders.length === 0 && (!data.files || data.files.length === 0) && !data.parent_path) {
+                    folderList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-title">Empty Directory</div>
+                            <div class="empty-state-description">This folder contains no files or subfolders</div>
+                        </div>
+                    `;
+                }
+                
+                folderBrowser.style.opacity = '1';
+            } catch (error) {
+                showAlert('Error loading folders: ' + error.message, 'error');
+            }
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function selectCurrentFolder() {
+            startDownload(currentPath);
+        }
+        
+        function goBack() {
+            const fileSelectionSection = document.getElementById('file-selection-section');
+            if (!fileSelectionSection.classList.contains('hidden')) {
+                document.getElementById('folder-section').classList.add('hidden');
+                fileSelectionSection.classList.remove('hidden');
+                setStep(1);
+            } else {
+                torrentFiles = [];
+                selectedFileIndices = [];
+                document.getElementById('folder-section').classList.add('hidden');
+                document.getElementById('magnet-section').classList.remove('hidden');
+                setStep(1);
+            }
+        }
+        
+        async function startDownload(path) {
+            const downloadButton = event.target;
+            downloadButton.disabled = true;
+            downloadButton.textContent = 'Starting...';
+            
+            if (torrentFiles.length > 0) {
+                if (selectedFileIndices.length > 0) {
+                    downloadingFiles = selectedFileIndices.map(idx => torrentFiles[idx]);
+                } else {
+                    downloadingFiles = torrentFiles;
+                }
+            } else {
+                downloadingFiles = [];
+            }
+            
+            try {
+                let response;
+                const flattenAll = document.getElementById('flattenAllCheckbox').checked;
+                
+                if (selectedTorrentFile) {
+                    const formData = new FormData();
+                    formData.append('file', selectedTorrentFile);
+                    formData.append('download_path', path);
+                    formData.append('skip_parent_folder', 'true');
+                    formData.append('flatten_all', flattenAll ? 'true' : 'false');
+                    if (selectedFileIndices.length > 0) {
+                        formData.append('selected_files', JSON.stringify(selectedFileIndices));
+                    }
+                    response = await fetch('/api/download/file', { method: 'POST', body: formData });
+                } else {
+                    const requestBody = {
+                        magnet_link: magnetLink,
+                        download_path: path,
+                        skip_parent_folder: true,
+                        flatten_all: flattenAll
+                    };
+                    if (selectedFileIndices.length > 0) {
+                        requestBody.selected_files = selectedFileIndices;
+                    }
+                    response = await fetch('/api/download', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
+                    });
+                }
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                    throw new Error(errorData.detail || 'Failed to start download');
+                }
+                
+                const data = await response.json();
+                downloadId = data.download_id;
+                updateURLWithDownloadId(downloadId);
+                
+                document.getElementById('folder-section').classList.add('hidden');
+                document.getElementById('progressContainer').style.display = 'block';
+                setStep(3);
+                scrollToElement(document.getElementById('progressContainer'));
+                
+                displayDownloadingFiles();
+                progressInterval = setInterval(updateProgress, 1000);
+            } catch (error) {
+                showAlert('Error starting download: ' + error.message, 'error');
+                downloadButton.disabled = false;
+                downloadButton.textContent = '✓ Download to This Folder';
+            }
+        }
+        
+        async function updateProgress() {
+            if (!downloadId) return;
+            
+            try {
+                const response = await fetch(`/api/progress/${downloadId}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404 || response.status === 410) {
+                        clearInterval(progressInterval);
+                        return;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'error') {
+                    clearInterval(progressInterval);
+                    document.getElementById('cancelBtn').disabled = true;
+                    document.getElementById('progressBar').style.background = 'var(--danger)';
+                    document.getElementById('progressBar').textContent = 'Error: ' + (data.error || 'Download failed');
+                    showAlert('Download failed: ' + (data.error || 'Unknown error'), 'error');
+                    setTimeout(() => startOver(), 5000);
+                    return;
+                }
+                
+                const progress = data.progress !== undefined && data.progress !== null ? data.progress : 0;
+                const progressPercent = progress.toFixed(1);
+                
+                document.getElementById('downloadName').textContent = data.name || 'Unknown';
+                document.getElementById('progressBar').style.width = progressPercent + '%';
+                document.getElementById('progressBar').textContent = progressPercent + '%';
+                document.getElementById('progressBar').parentElement.setAttribute('aria-valuenow', progressPercent);
+                document.getElementById('downloadSpeed').textContent = (data.download_rate || 0).toFixed(1) + ' KB/s';
+                document.getElementById('uploadSpeed').textContent = (data.upload_rate || 0).toFixed(1) + ' KB/s';
+                document.getElementById('peers').textContent = (data.num_seeds || 0) + ' / ' + (data.num_peers || 0);
+                
+                const downloadedMB = (data.total_download || 0).toFixed(1);
+                const totalSizeMB = data.total_size || 0;
+                
+                if (totalSizeMB > 0) {
+                    document.getElementById('downloaded').textContent = `${downloadedMB} / ${totalSizeMB.toFixed(1)} MB`;
+                } else {
+                    document.getElementById('downloaded').textContent = downloadedMB + ' MB';
+                }
+                
+                document.getElementById('timeElapsed').textContent = formatTime(data.elapsed_seconds || 0);
+                
+                if (data.eta_seconds && data.eta_seconds > 0 && progress < 99.9) {
+                    document.getElementById('eta').textContent = formatTime(data.eta_seconds);
+                } else if (progress >= 99.9) {
+                    document.getElementById('eta').textContent = 'Complete';
+                } else {
+                    document.getElementById('eta').textContent = 'Calculating...';
+                }
+                
+                if (data.status === 'completed' || progress >= 99.9) {
+                    clearInterval(progressInterval);
+                    document.getElementById('cancelBtn').style.display = 'none';
+                    document.getElementById('proceedPlexBtn').style.display = 'block';
+                    document.getElementById('newDownloadBtnProgress').style.display = 'block';
+                    
+                    const progressBar = document.getElementById('progressBar');
+                    progressBar.textContent = 'Complete ✓';
+                    progressBar.classList.add('completed');
+                    
+                    document.getElementById('progressContainer').classList.add('download-complete');
+                    document.getElementById('eta').textContent = 'Complete';
+                }
+            } catch (error) {
+                console.error('Error updating progress:', error);
+            }
+        }
+        
+        async function cancelDownload() {
+            if (!downloadId) return;
+            if (!confirm('Cancel this download?')) return;
+            
+            const cancelButton = document.getElementById('cancelBtn');
+            cancelButton.disabled = true;
+            cancelButton.textContent = 'Cancelling...';
+            
+            try {
+                await fetch('/api/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ download_id: downloadId })
+                });
+                
+                clearInterval(progressInterval);
+                showAlert('Download cancelled', 'success');
+                setTimeout(() => startOver(), 2000);
+            } catch (error) {
+                showAlert('Error cancelling: ' + error.message, 'error');
+                cancelButton.disabled = false;
+                cancelButton.textContent = '✕ Cancel Download';
+            }
+        }
+        
+        function showPlexSection() {
+            setStep(4);
+            document.getElementById('progressContainer').style.display = 'none';
+            const plexSection = document.getElementById('plex-section');
+            plexSection.style.display = 'block';
+            scrollToElement(plexSection);
+            updateURLStep('plex');
+        }
+        
+        function proceedToPlex() {
+            showPlexSection();
+        }
+        
+        function onLibrarySelected() {
+            const library = document.getElementById('plexLibrary').value;
+            document.getElementById('refreshLibraryBtn').disabled = !library;
+        }
+        
+        async function refreshPlex() {
+            if (!plexHealthy) {
+                showAlert('Plex not available', 'error');
+                return;
+            }
+            
+            const library = document.getElementById('plexLibrary').value;
+            if (!library) {
+                showAlert('Please select a library', 'error');
+                return;
+            }
+            
+            const refreshButton = document.getElementById('refreshLibraryBtn');
+            refreshButton.disabled = true;
+            refreshButton.innerHTML = '<span style="display: inline-block; animation: spin 0.8s linear infinite;">↻</span> Refreshing...';
+            
+            try {
+                const response = await fetch('/api/plex/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ library_name: library })
+                });
+                
+                if (!response.ok) throw new Error('Failed to refresh library');
+                
+                showAlert(`Scanning "${library}" for new content. Files will appear in Plex shortly!`, 'success', false);
+                document.getElementById('step4').classList.add('completed');
+                
+                document.querySelector('.plex-section .section-title').style.display = 'none';
+                document.getElementById('plexLibrary').style.display = 'none';
+                refreshButton.style.display = 'none';
+                
+                setTimeout(() => clearDownloadIdFromURL(), 2000);
+            } catch (error) {
+                showAlert('Error refreshing library: ' + error.message, 'error');
+                refreshButton.disabled = false;
+                refreshButton.innerHTML = '↻ Refresh Plex Library';
+            }
+        }
+        
+        function showAlert(message, type, autoDismiss = true) {
+            // Use toast notifications for better visibility
+            showToast(message, type, autoDismiss);
+            
+            // Also update inline alert container if visible (for plex section)
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${escapeHtml(message)}</div>`;
+            if (autoDismiss) {
+                setTimeout(() => alertContainer.innerHTML = '', 5000);
+            }
+        }
+        
+        function showToast(message, type, autoDismiss = true) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            const icon = type === 'success' ? '✓' : '✕';
+            toast.innerHTML = `
+                <span class="toast-icon">${icon}</span>
+                <span class="toast-message">${escapeHtml(message)}</span>
+                <button class="toast-close" onclick="dismissToast(this.parentElement)">×</button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Click to dismiss
+            toast.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('toast-close')) dismissToast(toast);
+            });
+            
+            if (autoDismiss) {
+                setTimeout(() => dismissToast(toast), 5000);
+            }
+        }
+        
+        function dismissToast(toast) {
+            if (!toast || toast.classList.contains('toast-exit')) return;
+            toast.classList.add('toast-exit');
+            setTimeout(() => toast.remove(), 300);
+        }
+        
+        function scrollToElement(element) {
+            if (!element) return;
+            setTimeout(() => {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+        
+        function startOver() {
+            torrentFiles = [];
+            selectedFileIndices = [];
+            downloadingFiles = [];
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

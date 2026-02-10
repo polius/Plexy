@@ -75,7 +75,7 @@ class TorrentInfoRequest(BaseModel):
 
 @app.get("/")
 async def read_index():
-    return FileResponse('static/index.html')
+    return FileResponse('web/index.html')
 
 
 @app.get("/api/search/nyaa")
@@ -763,12 +763,12 @@ async def refresh_plex_library(request: PlexRefreshRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount web files
+app.mount("/", StaticFiles(directory="web", html=True), name="web")
 
 
 if __name__ == "__main__":
     import uvicorn
-    # Create static directory if it doesn't exist
-    os.makedirs("static", exist_ok=True)
+    # Create web directory if it doesn't exist
+    os.makedirs("web", exist_ok=True)
     uvicorn.run(app, host="0.0.0.0", port=8000)
