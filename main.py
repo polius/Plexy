@@ -1,4 +1,5 @@
 import os
+import urllib3
 import libtorrent as lt
 import shutil
 import requests
@@ -28,7 +29,6 @@ try:
     plex_token = os.getenv('PLEX_TOKEN', '')
     if plex_token:
         # Create a custom session with SSL verification disabled
-        import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         session = requests.Session()
         session.verify = False

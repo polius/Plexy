@@ -13,23 +13,6 @@
 <b>Plexy</b> is a lightweight web application for downloading torrents with integrated Nyaa.si search and automatic Plex library refresh.
 </p>
 
-<br>
-
-<details>
-<summary><b>See screenshots</b></summary>
-
-| Page | Screenshot |
-| --- | --- |
-| 1.1. Source (Torrent) | <img src="assets/source-torrent.png" alt="Source - Torrent" /> |
-| 1.2. Source (Magnet) | <img src="assets/source-magnet.png" alt="Source - Magnet Link" /> |
-| 1.3. Source (Nyaa) | <img src="assets/source-nyaa.png" alt="Source - Nyaa.si" /> |
-| 2. Destination | <img src="assets/destination.png" alt="Destination" /> |
-| 3. Download | <img src="assets/download.png" alt="Download" /> |
-| 4. Plex (Select) | <img src="assets/plex-select.png" alt="Plex - Select" /> |
-| 5. Plex (Done) | <img src="assets/plex-done.png" alt="Plex - Done" /> |
-
-</details>
-
 ## Features
 
 - Add torrent via torrent file, magnet link or search Nyaa.si

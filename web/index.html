@@ -3,44 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plexy - Modern Torrent Downloader for Plex</title>
-    
+    <title>Plexy — Torrent Downloader for Plex</title>
+    <meta name="theme-color" content="#08080c">
+
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'><path fill='%236366f1' d='M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z'/><path fill='%23FFF' d='M200 352V160l128 96-128 96z'/></svg>">
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- External CSS -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'><path fill='%23e5a00d' d='M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z'/><path fill='%23111' d='M200 352V160l128 96-128 96z'/></svg>">
+
+    <!-- External CSS (fonts loaded via @import in CSS) -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- Toast Notification Container -->
     <div class="toast-container" id="toastContainer"></div>
-    
+
     <div class="container">
-        <!-- Header with Logo -->
+        <!-- Header -->
         <a href="/" style="text-decoration: none; color: inherit;">
             <h1>
                 <svg class="plex-logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                            <stop offset="0%" style="stop-color:#e5a00d;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#f5c518;stop-opacity:1" />
                         </linearGradient>
                     </defs>
                     <path fill="url(#logoGradient)" d="M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z"/>
-                    <path fill="#FFF" d="M200 352V160l128 96-128 96z"/>
+                    <path fill="#0a0a0f" d="M200 352V160l128 96-128 96z"/>
                 </svg>
                 Plexy
-                <span style="font-size: 14px; font-weight: 600; margin-left: -5px; margin-top: 15px; letter-spacing: 0.03em; opacity: 0.7;">v1.2.0</span>
+                <span style="font-family: var(--font-mono); font-size: 13px; font-weight: 600; margin-left: -4px; margin-top: 16px; letter-spacing: 0.06em; color: var(--text-secondary);">v1.3.0</span>
             </h1>
         </a>
-        <p class="subtitle">🚀 Automated Torrent Management with Seamless Plex Integration</p>
-        
-        <!-- Progress Step Indicator -->
+        <p class="subtitle">Automated torrent management with seamless Plex integration</p>
+
+        <!-- Step Indicator -->
         <div class="step-indicator">
             <div class="step active" id="step1">
                 <div class="step-number">1</div>
@@ -52,16 +48,20 @@
             </div>
             <div class="step" id="step3">
                 <div class="step-number">3</div>
-                <div class="step-label">Download</div>
+                <div class="step-label">Confirm</div>
             </div>
             <div class="step" id="step4">
                 <div class="step-number">4</div>
+                <div class="step-label">Download</div>
+            </div>
+            <div class="step" id="step5">
+                <div class="step-number">5</div>
                 <div class="step-label">Plex</div>
             </div>
         </div>
-        
-        <!-- Step 1: Torrent Source Selection -->
-        <div class="section" id="magnet-section">           
+
+        <!-- Step 1: Torrent Source -->
+        <div class="section" id="magnet-section">
             <div class="tabs" role="tablist" aria-label="Torrent source selection">
                 <button class="tab active" role="tab" aria-selected="true" aria-controls="file-tab" onclick="switchTab('file')">
                     📁 Torrent File
@@ -73,33 +73,33 @@
                     🔍 Nyaa Search
                 </button>
             </div>
-            
+
             <!-- Tab 1: Torrent File Upload -->
             <div class="tab-content active" id="file-tab" role="tabpanel">
                 <input type="file" id="torrentFileInput" accept=".torrent" style="display: none;" onchange="handleFileSelect(event)" aria-label="Select torrent file">
-                
+
                 <div class="file-upload-container">
                     <div class="file-upload-box" onclick="document.getElementById('torrentFileInput').click()">
                         <div class="file-upload-icon">📦</div>
                         <div class="file-upload-text">
                             <div class="file-upload-title">Upload Torrent File</div>
-                            <div class="file-upload-hint">Click to browse or drag & drop your .torrent file here</div>
+                            <div class="file-upload-hint">Click to browse or drag &amp; drop your .torrent file</div>
                         </div>
                     </div>
-                    
+
                     <div id="fileInfo" class="file-info-display"></div>
-                    
+
                     <button class="btn btn-primary btn-fullwidth" id="proceedFromFile" onclick="proceedFromFile()" disabled style="display: none;">
                         Continue to Folder Selection →
                     </button>
                 </div>
             </div>
-            
-            <!-- Tab 2: Manual Magnet Link Input -->
+
+            <!-- Tab 2: Magnet Link -->
             <div class="tab-content" id="manual-tab" role="tabpanel">
-                <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div style="display: flex; flex-direction: column; gap: 18px;">
                     <div>
-                        <label for="magnetInput" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--gray-700); font-size: 14px;">
+                        <label for="magnetInput" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-secondary); font-size: 13px;">
                             Magnet Link
                         </label>
                         <input type="text" id="magnetInput" placeholder="magnet:?xt=urn:btih:..." aria-label="Enter magnet link" oninput="torrentFiles = []; selectedFileIndices = [];">
@@ -110,25 +110,25 @@
                     </button>
                 </div>
             </div>
-            
-            <!-- Tab 3: Nyaa.si Search -->
+
+            <!-- Tab 3: Nyaa Search -->
             <div class="tab-content" id="nyaa-tab" role="tabpanel">
                 <div class="search-box">
-                    <input type="text" id="nyaaSearch" placeholder="Search for anime torrents on nyaa.si..." aria-label="Search nyaa.si" style="flex: 1;">
+                    <input type="text" id="nyaaSearch" placeholder="Search anime torrents on nyaa.si..." aria-label="Search nyaa.si" style="flex: 1;">
                     <button class="btn btn-primary" onclick="searchNyaa()">
-                        🔍 Search
+                        Search
                     </button>
                 </div>
                 <div class="keyboard-hint" style="margin-top: -12px; margin-bottom: 12px;"><span class="kbd">Enter</span> to search</div>
                 <div id="searchResults" role="region" aria-live="polite"></div>
             </div>
         </div>
-        
-        <!-- Step 1.5: File Selection (Multi-file Torrents) -->
+
+        <!-- Step 1.5: File Selection -->
         <div class="section hidden" id="file-selection-section">
             <div class="section-title">📦 Select Files to Download</div>
-            <div id="torrentInfoDisplay" style="margin-bottom: 16px; padding: 16px; background: var(--primary-light); border-radius: var(--radius-lg); border: 2px solid var(--primary);"></div>
-            
+            <div id="torrentInfoDisplay" style="margin-bottom: 14px; padding: 14px; background: var(--primary-light); border-radius: var(--radius-lg); border: 1px solid rgba(229,160,13,0.2);"></div>
+
             <div class="file-selection-header">
                 <div class="file-selection-stats">
                     <span id="selectedFileCount">0</span> of <span id="totalFileCount">0</span> files selected
@@ -136,19 +136,19 @@
                 </div>
                 <button class="btn btn-sm btn-secondary" onclick="toggleAllFiles()" id="toggleAllBtn">Select All</button>
             </div>
-            
+
             <div class="file-list-container" id="fileListContainer">
                 <div class="file-list-viewport" id="fileListViewport"></div>
             </div>
-            
-            <div class="checkbox-option" style="margin: 16px 0;">
+
+            <div class="checkbox-option" style="margin: 14px 0;">
                 <input type="checkbox" id="flattenAllCheckbox">
                 <label for="flattenAllCheckbox">
-                    📂 Save all files without subfolders (flatten directory structure)
+                    📂 Flatten directory structure
                 </label>
             </div>
-            
-            <div class="btn-group" style="margin-top: 20px;">
+
+            <div class="btn-group" style="margin-top: 18px;">
                 <button class="btn btn-primary" onclick="proceedToFolderSelection(this)" id="proceedFromFileSelection">
                     Continue to Folder Selection →
                 </button>
@@ -157,35 +157,69 @@
                 </button>
             </div>
         </div>
-        
-        <!-- Step 2: Download Destination Selection -->
+
+        <!-- Step 2: Destination -->
         <div class="section hidden" id="folder-section">
             <div class="section-title">📍 Select Download Destination</div>
             <div class="folder-browser" id="folderBrowser" role="navigation" aria-label="Folder browser">
                 <div class="current-path" id="currentPath" aria-live="polite">/</div>
                 <div class="folder-stats" id="folderStats"></div>
+                <input type="text" id="folderFilter" placeholder="Filter folders..." oninput="filterFolders()" autocomplete="off" aria-label="Filter folders" style="margin-bottom: 8px;">
                 <div id="folderList"></div>
             </div>
-            
+
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="selectCurrentFolder()">
-                    ✓ Download to This Folder
+                    ✓ Download Here
                 </button>
                 <button class="btn btn-secondary" onclick="goBack()">
                     ← Back
                 </button>
             </div>
         </div>
-        
-        <!-- Step 3: Download Progress Tracking -->
-        <div class="progress-container" id="progressContainer">
-            <div class="section-title">⬇️ Download in Progress</div>
-            <div id="downloadName" style="font-weight: 700; margin-bottom: 12px; color: var(--gray-900); font-size: 16px;">Initializing download...</div>
-            
-            <div class="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                <div class="progress-bar" id="progressBar">0%</div>
+
+        <!-- Step 3: Confirm Download -->
+        <div class="section hidden" id="confirm-section">
+            <div class="section-title">Confirm Download</div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+                <div style="background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em;">📍 Destination</div>
+                    <div id="confirmDestination" style="font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); word-break: break-all;"></div>
+                </div>
+                <div style="background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em;">📦 Torrent</div>
+                    <div id="confirmTorrentName" style="font-size: 14px; font-weight: 600; color: var(--text-primary); word-break: break-word; margin-bottom: 4px;"></div>
+                    <div id="confirmFilesInfo" style="font-size: 13px; color: var(--text-secondary);"></div>
+                </div>
+                <div id="confirmOptions" style="display: none; background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em;">⚙️ Options</div>
+                    <div id="confirmOptionsContent" style="font-size: 13px; color: var(--text-primary);"></div>
+                </div>
             </div>
-            
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="confirmAndDownload()">
+                    ✓ Start Download
+                </button>
+                <button class="btn btn-secondary" onclick="goBackFromConfirm()">
+                    ← Back
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Download Progress -->
+        <div class="progress-container" id="progressContainer">
+            <div class="section-title">Download in Progress</div>
+            <div id="downloadName" style="font-family: var(--font-display); font-weight: 700; margin-bottom: 10px; color: var(--text-primary); font-size: 15px;">Initializing download...</div>
+
+            <div class="progress-track-outer">
+                <div class="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <div class="progress-bar" id="progressBar" style="width:0%"></div>
+                </div>
+                <span class="progress-pct" id="progressPercent">0%</span>
+            </div>
+
             <div class="progress-info">
                 <div class="progress-item">
                     <div class="progress-label">⬇️ Download</div>
@@ -212,37 +246,37 @@
                     <div class="progress-value" id="eta">Calculating...</div>
                 </div>
             </div>
-            
+
             <!-- Files being downloaded -->
-            <div id="downloadingFilesList" style="display: none; margin-top: 24px; margin-bottom: 24px;">
-                <div style="background: white; border: 2px solid var(--gray-200); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm);">
-                    <div style="font-size: 15px; font-weight: 700; color: var(--gray-900); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--gray-200); display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 20px;">📦</span>
+            <div id="downloadingFilesList" style="display: none; margin-top: 20px; margin-bottom: 20px;">
+                <div style="background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
+                    <div style="font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 16px;">📦</span>
                         <span>Files in Download Queue</span>
                     </div>
-                    <div id="downloadingFilesContent" style="max-height: 250px; overflow-y: auto; font-size: 14px;"></div>
+                    <div id="downloadingFilesContent" style="max-height: 220px; overflow-y: auto; font-size: 13px;"></div>
                 </div>
             </div>
-            
-            <div class="btn-group" style="margin-top: 24px;">
+
+            <div class="btn-group" style="margin-top: 20px;">
                 <button class="btn btn-danger btn-fullwidth" onclick="cancelDownload()" id="cancelBtn">
                     ✕ Cancel Download
                 </button>
             </div>
-            <button class="btn btn-success btn-fullwidth" onclick="proceedToPlex()" id="proceedPlexBtn" style="display: none; margin-top: 16px;">
-                ✓ Download Complete - Update Plex →
+            <button class="btn btn-success btn-fullwidth" onclick="proceedToPlex()" id="proceedPlexBtn" style="display: none; margin-top: 14px;">
+                ✓ Download Complete — Update Plex →
             </button>
-            <button class="btn btn-outline-primary btn-fullwidth" onclick="startOver()" id="newDownloadBtnProgress" style="display: none; margin-top: 12px;">
+            <button class="btn btn-outline-primary btn-fullwidth" onclick="startOver()" id="newDownloadBtnProgress" style="display: none; margin-top: 10px;">
                 ↩ Start New Download
             </button>
         </div>
-        
+
         <!-- Step 4: Plex Library Refresh -->
         <div class="section plex-section" id="plex-section">
             <div id="alertContainer" role="alert" aria-live="polite"></div>
             <div class="section-title">🎬 Update Plex Media Library</div>
-            <div style="margin-bottom: 20px;">
-                <label for="plexLibrary" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--gray-700); font-size: 14px;">
+            <div style="margin-bottom: 18px;">
+                <label for="plexLibrary" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-secondary); font-size: 13px;">
                     Select Library to Refresh
                 </label>
                 <select id="plexLibrary" aria-label="Select Plex library" onchange="onLibrarySelected()">
@@ -254,7 +288,7 @@
                     ↻ Refresh Plex Library
                 </button>
             </div>
-            <button class="btn btn-outline-primary btn-fullwidth" onclick="startOver()" style="margin-top: 12px;">
+            <button class="btn btn-outline-primary btn-fullwidth" onclick="startOver()" style="margin-top: 10px;">
                 ↩ Start New Download
             </button>
         </div>
@@ -270,6 +304,7 @@
         let selectedTorrentFile = null;
         let plexHealthy = false;
         let plexHealthChecked = false;
+        let confirmedPath = '';
         
         // File selection variables
         let torrentFiles = [];
@@ -290,11 +325,11 @@
                     document.getElementById('magnet-section').classList.add('hidden');
                     document.getElementById('progressContainer').style.display = 'none';
                     document.getElementById('plex-section').style.display = 'block';
-                    setStep(4);
+                    setStep(5);
                 } else {
                     document.getElementById('magnet-section').classList.add('hidden');
                     document.getElementById('progressContainer').style.display = 'block';
-                    setStep(3);
+                    setStep(4);
                     progressInterval = setInterval(updateProgress, 1000);
                     updateProgress();
                 }
@@ -356,24 +391,23 @@
                 const container = document.querySelector('.container');
                 const errorBanner = document.createElement('div');
                 errorBanner.style.cssText = `
-                    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-                    border: 2px solid #ef4444;
-                    border-radius: 16px;
-                    padding: 28px;
-                    margin-bottom: 32px;
-                    box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.2);
+                    background: rgba(248, 113, 113, 0.08);
+                    border: 1px solid rgba(248, 113, 113, 0.25);
+                    border-radius: 14px;
+                    padding: 24px;
+                    margin-bottom: 28px;
                 `;
                 errorBanner.innerHTML = `
-                    <div style="display: flex; align-items: flex-start; gap: 20px;">
-                        <div style="flex-shrink: 0; width: 56px; height: 56px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; font-weight: bold; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);">!</div>
+                    <div style="display: flex; align-items: flex-start; gap: 16px;">
+                        <div style="flex-shrink: 0; width: 44px; height: 44px; background: rgba(248,113,113,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #f87171; font-size: 22px; font-weight: bold;">!</div>
                         <div style="flex: 1;">
-                            <h3 style="margin: 0 0 12px 0; color: #991b1b; font-size: 20px; font-weight: 800;">Plex Connection Required</h3>
-                            <p style="margin: 0 0 16px 0; color: #7f1d1d; font-size: 15px; line-height: 1.6;">Unable to establish connection with your Plex Media Server. This application requires a valid Plex connection to function properly.</p>
-                            <div style="background: rgba(127, 29, 29, 0.1); border-radius: 12px; padding: 16px; margin-top: 16px;">
-                                <p style="margin: 0 0 12px 0; color: #7f1d1d; font-size: 14px; font-weight: 700;">🔧 Troubleshooting Steps:</p>
-                                <ul style="margin: 0; padding-left: 24px; color: #7f1d1d; font-size: 14px; line-height: 2;">
-                                    <li>Verify <code style="background: rgba(0,0,0,0.15); padding: 3px 8px; border-radius: 6px; font-family: monospace; font-weight: 600;">PLEX_URL</code> environment variable</li>
-                                    <li>Ensure <code style="background: rgba(0,0,0,0.15); padding: 3px 8px; border-radius: 6px; font-family: monospace; font-weight: 600;">PLEX_TOKEN</code> is valid</li>
+                            <h3 style="margin: 0 0 10px 0; color: #f87171; font-size: 17px; font-weight: 700; font-family: var(--font-display);">Plex Connection Required</h3>
+                            <p style="margin: 0 0 14px 0; color: #9a9494; font-size: 14px; line-height: 1.6;">Unable to connect to your Plex Media Server. A valid Plex connection is required.</p>
+                            <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 14px; border: 1px solid rgba(255,255,255,0.06);">
+                                <p style="margin: 0 0 10px 0; color: #9a9494; font-size: 13px; font-weight: 600;">🔧 Troubleshooting:</p>
+                                <ul style="margin: 0; padding-left: 20px; color: #9a9494; font-size: 13px; line-height: 2;">
+                                    <li>Verify <code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-weight: 500; color: #f87171;">PLEX_URL</code> environment variable</li>
+                                    <li>Ensure <code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-weight: 500; color: #f87171;">PLEX_TOKEN</code> is valid</li>
                                     <li>Check that Plex Media Server is running</li>
                                 </ul>
                             </div>
@@ -542,11 +576,11 @@
                         <div class="result-item" onclick="selectSearchResult(${index}, event)" data-magnet="${escapeHtml(result.magnet)}" tabindex="0" role="button">
                             <div class="result-name">${escapeHtml(result.name)}</div>
                             <div class="result-meta">
-                                <span>📅 ${escapeHtml(result.date)}</span>
-                                <span>💾 ${escapeHtml(result.size)}</span>
-                                <span class="result-badge seeders">🌱 ${escapeHtml(result.seeders)}</span>
-                                <span class="result-badge leechers">👥 ${escapeHtml(result.leechers)}</span>
-                                <span>🏷️ ${escapeHtml(result.category)}</span>
+                                <span>${escapeHtml(result.date)}</span>
+                                <span>${escapeHtml(result.size)}</span>
+                                <span class="result-badge seeders">Seeds: ${escapeHtml(result.seeders)}</span>
+                                <span class="result-badge leechers">Peers: ${escapeHtml(result.leechers)}</span>
+                                <span>${escapeHtml(result.category)}</span>
                             </div>
                         </div>
                     `).join('') + '</div>';
@@ -611,7 +645,7 @@
             const fileInfo = document.getElementById('fileInfo');
             const proceedButton = document.getElementById('proceedFromFile');
             
-            fileInfo.innerHTML = `<strong>✓ Selected:</strong> ${escapeHtml(file.name)} <span style="color: var(--gray-500);">(${(file.size / 1024).toFixed(2)} KB)</span>`;
+            fileInfo.innerHTML = `<strong>✓ Selected:</strong> ${escapeHtml(file.name)} <span style="color: var(--text-muted);">(${(file.size / 1024).toFixed(2)} KB)</span>`;
             fileInfo.classList.add('active');
             proceedButton.disabled = false;
             proceedButton.style.display = 'block';
@@ -684,8 +718,8 @@
             allFilesSelected = true;
             
             document.getElementById('torrentInfoDisplay').innerHTML = `
-                <div style="font-weight: 700; margin-bottom: 6px; word-break: break-word; font-size: 16px;">${escapeHtml(torrentData.name)}</div>
-                <div style="font-size: 14px; color: var(--gray-600); font-weight: 600;">
+                <div style="font-family: var(--font-display); font-weight: 700; margin-bottom: 4px; word-break: break-word; font-size: 15px; color: var(--text-primary);">${escapeHtml(torrentData.name)}</div>
+                <div style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">
                     ${torrentData.num_files} files • Total: ${formatFileSize(torrentData.total_size)}
                 </div>
             `;
@@ -854,12 +888,12 @@
             if (downloadingFiles.length > 0) {
                 filesList.style.display = 'block';
                 filesContent.innerHTML = downloadingFiles.map((file, index) => 
-                    `<div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--gray-50); border-radius: var(--radius-md); margin-bottom: 10px; transition: all 0.2s; border: 1px solid var(--gray-200);" onmouseover="this.style.background='var(--primary-light)'; this.style.borderColor='var(--primary)';" onmouseout="this.style.background='var(--gray-50)'; this.style.borderColor='var(--gray-200)';">
-                        <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
-                            <span style="color: var(--primary); font-size: 13px; font-weight: 700; min-width: 28px; background: white; padding: 4px 8px; border-radius: 6px;">#${index + 1}</span>
-                            <span style="word-break: break-word; color: var(--gray-800); flex: 1; font-weight: 500;">${escapeHtml(file.name)}</span>
+                    `<div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: transparent; border-radius: var(--radius-md); margin-bottom: 6px; transition: background 0.15s; border: 1px solid var(--border);" onmouseover="this.style.background='var(--primary-light)';" onmouseout="this.style.background='transparent';">
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                            <span style="color: var(--primary); font-size: 11px; font-weight: 700; font-family: var(--font-mono);">#${index + 1}</span>
+                            <span style="word-break: break-word; color: var(--text-primary); flex: 1; font-weight: 500; font-size: 13px;">${escapeHtml(file.name)}</span>
                         </div>
-                        <span style="white-space: nowrap; color: var(--gray-600); font-weight: 700; font-size: 13px; background: white; padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">${formatFileSize(file.size)}</span>
+                        <span style="white-space: nowrap; color: var(--text-muted); font-weight: 600; font-size: 12px; font-family: var(--font-mono);">${formatFileSize(file.size)}</span>
                     </div>`
                 ).join('');
             } else {
@@ -892,7 +926,7 @@
         }
         
         function setStep(stepNumber) {
-            for (let i = 1; i <= 4; i++) {
+            for (let i = 1; i <= 5; i++) {
                 const step = document.getElementById(`step${i}`);
                 step.classList.remove('active', 'completed');
                 if (i < stepNumber) {
@@ -988,6 +1022,8 @@
                 
                 const folderList = document.getElementById('folderList');
                 folderList.innerHTML = '';
+                const filterInput = document.getElementById('folderFilter');
+                if (filterInput) filterInput.value = '';
                 
                 if (data.parent_path) {
                     const parentItem = document.createElement('div');
@@ -1009,7 +1045,8 @@
                 folders.forEach(folder => {
                     const item = document.createElement('div');
                     item.className = 'folder-item';
-                    item.innerHTML = `<span class="folder-icon">📁</span><span>${escapeHtml(folder.name)}</span>`;
+                    item.dataset.name = folder.name.toLowerCase();
+                    item.innerHTML = `<span class="folder-icon">📁</span><span>${escapeHtml(folder.name)}</span>`;  
                     item.onclick = () => loadFolders(folder.path);
                     item.setAttribute('tabindex', '0');
                     item.setAttribute('role', 'button');
@@ -1061,10 +1098,69 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
-        function selectCurrentFolder() {
-            startDownload(currentPath);
+        function filterFolders() {
+            const filter = document.getElementById('folderFilter').value.toLowerCase();
+            document.getElementById('folderList').querySelectorAll('.folder-item[data-name]').forEach(item => {
+                item.style.display = item.dataset.name.includes(filter) ? '' : 'none';
+            });
         }
-        
+
+        function selectCurrentFolder() {
+            showConfirmation(currentPath);
+        }
+
+        function showConfirmation(path) {
+            confirmedPath = path;
+
+            document.getElementById('confirmDestination').textContent = path;
+
+            let torrentDisplayName = '';
+            if (selectedTorrentFile) {
+                torrentDisplayName = selectedTorrentFile.name;
+            } else if (selectedSearchResult) {
+                torrentDisplayName = selectedSearchResult.name;
+            } else if (magnetLink) {
+                const dn = magnetLink.match(/[?&]dn=([^&]+)/);
+                torrentDisplayName = dn ? decodeURIComponent(dn[1].replace(/\+/g, ' ')) : magnetLink.substring(0, 80) + '…';
+            }
+            document.getElementById('confirmTorrentName').textContent = torrentDisplayName;
+
+            if (torrentFiles.length > 0) {
+                const indices = selectedFileIndices.length > 0 ? selectedFileIndices : torrentFiles.map((_, i) => i);
+                const count = indices.length;
+                const size = torrentFiles.filter((_, idx) => indices.includes(idx)).reduce((s, f) => s + f.size, 0);
+                document.getElementById('confirmFilesInfo').textContent = `${count} file${count !== 1 ? 's' : ''} · ${formatFileSize(size)}`;
+            } else {
+                document.getElementById('confirmFilesInfo').textContent = '';
+            }
+
+            const flattenAll = document.getElementById('flattenAllCheckbox').checked;
+            const confirmOptions = document.getElementById('confirmOptions');
+            if (flattenAll) {
+                confirmOptions.style.display = 'block';
+                document.getElementById('confirmOptionsContent').textContent = '📂 Flatten directory structure enabled';
+            } else {
+                confirmOptions.style.display = 'none';
+            }
+
+            document.getElementById('folder-section').classList.add('hidden');
+            const confirmSection = document.getElementById('confirm-section');
+            confirmSection.classList.remove('hidden');
+            setStep(3);
+            scrollToElement(confirmSection);
+        }
+
+        function goBackFromConfirm() {
+            document.getElementById('confirm-section').classList.add('hidden');
+            document.getElementById('folder-section').classList.remove('hidden');
+            setStep(2);
+            scrollToElement(document.getElementById('folder-section'));
+        }
+
+        function confirmAndDownload() {
+            startDownload(confirmedPath);
+        }
+
         function goBack() {
             const fileSelectionSection = document.getElementById('file-selection-section');
             if (!fileSelectionSection.classList.contains('hidden')) {
@@ -1136,8 +1232,9 @@
                 updateURLWithDownloadId(downloadId);
                 
                 document.getElementById('folder-section').classList.add('hidden');
+                document.getElementById('confirm-section').classList.add('hidden');
                 document.getElementById('progressContainer').style.display = 'block';
-                setStep(3);
+                setStep(4);
                 scrollToElement(document.getElementById('progressContainer'));
                 
                 displayDownloadingFiles();
@@ -1145,7 +1242,7 @@
             } catch (error) {
                 showAlert('Error starting download: ' + error.message, 'error');
                 downloadButton.disabled = false;
-                downloadButton.textContent = '✓ Download to This Folder';
+                downloadButton.textContent = '✓ Start Download';
             }
         }
         
@@ -1168,8 +1265,9 @@
                 if (data.status === 'error') {
                     clearInterval(progressInterval);
                     document.getElementById('cancelBtn').disabled = true;
-                    document.getElementById('progressBar').style.background = 'var(--danger)';
-                    document.getElementById('progressBar').textContent = 'Error: ' + (data.error || 'Download failed');
+                    document.getElementById('progressBar').classList.add('error-state');
+                    document.getElementById('progressPercent').textContent = 'Error';
+                    document.getElementById('progressPercent').classList.add('error-state');
                     showAlert('Download failed: ' + (data.error || 'Unknown error'), 'error');
                     setTimeout(() => startOver(), 5000);
                     return;
@@ -1180,7 +1278,7 @@
                 
                 document.getElementById('downloadName').textContent = data.name || 'Unknown';
                 document.getElementById('progressBar').style.width = progressPercent + '%';
-                document.getElementById('progressBar').textContent = progressPercent + '%';
+                document.getElementById('progressPercent').textContent = progressPercent + '%';
                 document.getElementById('progressBar').parentElement.setAttribute('aria-valuenow', progressPercent);
                 document.getElementById('downloadSpeed').textContent = (data.download_rate || 0).toFixed(1) + ' KB/s';
                 document.getElementById('uploadSpeed').textContent = (data.upload_rate || 0).toFixed(1) + ' KB/s';
@@ -1212,8 +1310,10 @@
                     document.getElementById('newDownloadBtnProgress').style.display = 'block';
                     
                     const progressBar = document.getElementById('progressBar');
-                    progressBar.textContent = 'Complete ✓';
                     progressBar.classList.add('completed');
+                    const progressPct = document.getElementById('progressPercent');
+                    progressPct.textContent = '100%';
+                    progressPct.classList.add('completed');
                     
                     document.getElementById('progressContainer').classList.add('download-complete');
                     document.getElementById('eta').textContent = 'Complete';
@@ -1249,7 +1349,7 @@
         }
         
         function showPlexSection() {
-            setStep(4);
+            setStep(5);
             document.getElementById('progressContainer').style.display = 'none';
             const plexSection = document.getElementById('plex-section');
             plexSection.style.display = 'block';
@@ -1292,7 +1392,7 @@
                 if (!response.ok) throw new Error('Failed to refresh library');
                 
                 showAlert(`Scanning "${library}" for new content. Files will appear in Plex shortly!`, 'success', false);
-                document.getElementById('step4').classList.add('completed');
+                document.getElementById('step5').classList.add('completed');
                 
                 document.querySelector('.plex-section .section-title').style.display = 'none';
                 document.getElementById('plexLibrary').style.display = 'none';
