@@ -22,22 +22,53 @@ torrent_session.apply_settings(settings)
 active_downloads: Dict[str, lt.torrent_handle] = {}
 download_info: Dict[str, dict] = {}
 
-# Plex connection from environment variables
+# Plex connection from environment variables (lazily established / reconnected)
 plex = None
-try:
-    plex_url = os.getenv('PLEX_URL', 'http://localhost:32400')
-    plex_token = os.getenv('PLEX_TOKEN', '')
-    if plex_token:
-        # Create a custom session with SSL verification disabled
+
+
+def get_plex():
+    """Return a connected PlexServer, attempting to (re)connect if needed.
+
+    Connection is lazy so Plexy keeps working when Plex is started after Plexy,
+    and so the rest of the app never depends on Plex being reachable.
+    """
+    global plex
+    if plex is not None:
+        return plex
+
+    token = os.getenv('PLEX_TOKEN', '')
+    if not token:
+        return None
+
+    url = os.getenv('PLEX_URL', 'http://localhost:32400')
+    try:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         session = requests.Session()
         session.verify = False
-        plex = PlexServer(plex_url, plex_token, session=session, timeout=30)
-except Exception as e:
-    print(f"Warning: Could not connect to Plex: {e}")
+        plex = PlexServer(url, token, session=session, timeout=30)
+    except Exception as e:
+        print(f"Warning: Could not connect to Plex: {e}")
+        plex = None
+    return plex
+
 
 # Base path for downloads (internal container path)
 BASE_PATH = "/downloads"
+
+
+def resolve_safe_path(display_path: str) -> str:
+    """Map a display path to a real filesystem path, refusing anything outside BASE_PATH.
+
+    Resolves symlinks and '..' segments before validating, which closes the
+    path-traversal hole where '/../etc' -> '/downloads/../etc' passed a naive
+    startswith() check but resolved to '/etc'.
+    """
+    internal = get_internal_path(display_path or "/")
+    real = os.path.realpath(internal)
+    base = os.path.realpath(BASE_PATH)
+    if real != base and not real.startswith(base + os.sep):
+        raise HTTPException(status_code=403, detail="Access denied: path is outside the downloads directory")
+    return real
 
 def get_display_path(internal_path: str) -> str:
     """Convert internal path to display path by removing /downloads prefix"""
@@ -69,17 +100,22 @@ class PlexRefreshRequest(BaseModel):
     library_name: str
 
 
+class CreateFolderRequest(BaseModel):
+    path: str
+    name: str
+
+
 class TorrentInfoRequest(BaseModel):
     magnet_link: str = None
 
 
 @app.get("/")
-async def read_index():
+def read_index():
     return FileResponse('web/index.html')
 
 
 @app.get("/api/search/nyaa")
-async def search_nyaa(query: str):
+def search_nyaa(query: str):
     """Search nyaa.si for torrents using RSS feed"""
     try:
         # Use RSS feed instead of scraping HTML
@@ -176,7 +212,7 @@ async def search_nyaa(query: str):
 
 
 @app.post("/api/torrent/info")
-async def get_torrent_info(request: TorrentInfoRequest):
+def get_torrent_info(request: TorrentInfoRequest):
     """Get file list from a magnet link by downloading metadata"""
     try:
         if not request.magnet_link or not request.magnet_link.startswith('magnet:'):
@@ -288,7 +324,7 @@ async def get_torrent_info_from_file(file: UploadFile = File(...)):
 
 
 @app.get("/api/config/base-path")
-async def get_base_path():
+def get_base_path():
     """Get the default download base path from config"""
     return {
         "base_path": "/",
@@ -297,27 +333,19 @@ async def get_base_path():
 
 
 @app.get("/api/folders")
-async def list_folders(path: str = None):
+def list_folders(path: str = None):
     """List folders in the given path"""
     # Use config base path if no path provided
     if path is None:
         path = "/"
-    
-    # Convert display path to internal path
-    internal_path = get_internal_path(path)
-    
+
     try:
-        # Security: ensure path is absolute and exists
-        if not os.path.isabs(internal_path):
-            internal_path = os.path.abspath(internal_path)
-        
-        # Security: prevent navigating above BASE_PATH
-        if not internal_path.startswith(BASE_PATH):
-            raise HTTPException(status_code=403, detail="Access denied: Cannot navigate outside download directory")
-        
+        # Resolve + validate against traversal outside BASE_PATH
+        internal_path = resolve_safe_path(path)
+
         if not os.path.exists(internal_path):
             raise HTTPException(status_code=404, detail="Path not found")
-        
+
         folders = []
         files = []
         try:
@@ -339,33 +367,56 @@ async def list_folders(path: str = None):
         except PermissionError:
             raise HTTPException(status_code=403, detail="Permission denied")
         
-        parent_internal = os.path.dirname(internal_path) if internal_path != BASE_PATH else None
+        at_root = internal_path == os.path.realpath(BASE_PATH)
+        parent_internal = os.path.dirname(internal_path) if not at_root else None
         parent_display = get_display_path(parent_internal) if parent_internal else None
-        
+        display = get_display_path(internal_path)
+
         return {
-            "current_path": path,
-            "display_path": path,
+            "current_path": display,
+            "display_path": display,
             "parent_path": parent_display,
             "folders": folders,
             "files": files,
             "folder_count": len(folders),
             "file_count": len(files)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/folders/create")
+def create_folder(request: CreateFolderRequest):
+    """Create a new subfolder inside the current (validated) directory."""
+    name = (request.name or "").strip()
+    if not name or "/" in name or name in (".", ".."):
+        raise HTTPException(status_code=400, detail="Invalid folder name")
+
+    parent = resolve_safe_path(request.path)
+    target = resolve_safe_path(os.path.join(request.path or "/", name))
+    try:
+        os.makedirs(target, exist_ok=False)
+    except FileExistsError:
+        raise HTTPException(status_code=409, detail="A folder with that name already exists")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not create folder: {str(e)}")
+
+    return {"path": get_display_path(target), "name": name}
+
+
 @app.post("/api/download")
-async def start_download(request: MagnetRequest):
+def start_download(request: MagnetRequest):
     """Start downloading a torrent from magnet link"""
     try:
         # Validate magnet link format
         if not request.magnet_link or not request.magnet_link.startswith('magnet:'):
             raise HTTPException(status_code=400, detail="Invalid magnet link format")
-        
-        # Convert display path to internal path
-        internal_path = get_internal_path(request.download_path)
-        
+
+        # Resolve + validate download path (blocks traversal)
+        internal_path = resolve_safe_path(request.download_path)
+
         # Validate download path
         if not os.path.exists(internal_path):
             raise HTTPException(status_code=404, detail="Download path not found")
@@ -428,8 +479,11 @@ async def start_download(request: MagnetRequest):
                             new_path = path_parts[1]
                             handle.rename_file(i, new_path)
         
-        # Generate download ID
-        download_id = str(hash(request.magnet_link))[:16]
+        # Generate a stable download ID from the torrent's info hash
+        try:
+            download_id = str(handle.info_hash())[:16]
+        except Exception:
+            download_id = str(abs(hash(request.magnet_link)))[:16]
         active_downloads[download_id] = handle
         download_info[download_id] = {
             "status": "downloading",
@@ -464,14 +518,14 @@ async def start_download_from_file(
         # Validate file extension
         if not file.filename.endswith('.torrent'):
             raise HTTPException(status_code=400, detail="Invalid file type. Please upload a .torrent file")
-        
-        # Convert display path to internal path
-        internal_path = get_internal_path(download_path)
-        
+
+        # Resolve + validate download path (blocks traversal)
+        internal_path = resolve_safe_path(download_path)
+
         # Validate download path
         if not os.path.exists(internal_path):
             raise HTTPException(status_code=404, detail="Download path not found")
-        
+
         # Read the file content into memory (not saving to disk)
         torrent_data = await file.read()
         
@@ -558,103 +612,121 @@ async def start_download_from_file(
         raise HTTPException(status_code=500, detail=f"Error starting download: {str(e)}")
 
 
-@app.get("/api/progress/{download_id}")
-async def get_progress(download_id: str):
-    """Get download progress for a specific torrent"""
-    if download_id not in active_downloads:
-        raise HTTPException(status_code=404, detail="Download not found")
-    
-    handle = active_downloads[download_id]
-    
-    # Check if handle is valid
+def _build_progress(download_id: str, handle) -> dict:
+    """Compute a fresh progress snapshot for a handle and cache it in download_info.
+
+    Preserves start_time / path / save_dir across polls. Never raises — returns a
+    dict whose 'status' reflects errors so list endpoints can include every item.
+    """
+    prev = download_info.get(download_id, {})
+
     if not handle.is_valid():
-        # Remove invalid handle
-        del active_downloads[download_id]
-        if download_id in download_info:
-            download_info[download_id]["status"] = "error"
-        raise HTTPException(status_code=410, detail="Download failed or was removed")
-    
+        info = {**prev, "status": "error", "error": "Download handle is no longer valid"}
+        download_info[download_id] = info
+        active_downloads.pop(download_id, None)
+        return info
+
     status = handle.status()
-    
-    # Check for errors
+
     if status.error:
-        error_msg = status.error
-        download_info[download_id] = {
+        info = {
+            **prev,
             "status": "error",
             "progress": status.progress * 100,
-            "name": status.name or "Unknown",
-            "download_rate": 0,
-            "upload_rate": 0,
-            "num_seeds": 0,
-            "num_peers": 0,
-            "total_download": 0,
-            "total_upload": 0,
-            "error": error_msg
+            "name": status.name or prev.get("name", "Unknown"),
+            "download_rate": 0, "upload_rate": 0,
+            "num_seeds": 0, "num_peers": 0,
+            "total_download": 0, "total_upload": 0,
+            "error": str(status.error),
         }
-        # Remove from active downloads
-        del active_downloads[download_id]
-        return download_info[download_id]
-    
-    # Get total size from torrent info (only for files with priority > 0)
+        download_info[download_id] = info
+        active_downloads.pop(download_id, None)
+        return info
+
+    # Size of just the files we're actually downloading (priority > 0)
     total_size = 0
     try:
         torrent_info = handle.torrent_file()
         if torrent_info:
-            num_files = torrent_info.num_files()
             file_storage = torrent_info.files()
-            # Calculate size only for files that are being downloaded
-            for i in range(num_files):
+            for i in range(torrent_info.num_files()):
                 if handle.file_priority(i) > 0:
                     total_size += file_storage.file_size(i)
-            total_size = total_size / (1024 * 1024)  # Convert to MB
-            
-            # If no files have priority set (all selected), use total size
+            total_size = total_size / (1024 * 1024)  # MB
             if total_size == 0:
                 total_size = torrent_info.total_size() / (1024 * 1024)
-    except:
+    except Exception:
         pass
-    
-    # Calculate ETA
+
     eta_seconds = 0
     if status.download_rate > 0 and total_size > 0:
-        remaining_mb = total_size - (status.total_download / (1024 * 1024))
-        remaining_bytes = remaining_mb * 1024 * 1024
-        eta_seconds = int(remaining_bytes / status.download_rate)
-    
-    # Calculate elapsed time
-    elapsed_seconds = 0
-    start_time = None
-    if download_id in download_info and 'start_time' in download_info[download_id]:
-        start_time = download_info[download_id]['start_time']
-        elapsed_seconds = int(datetime.now().timestamp() - start_time)
-    
+        remaining_bytes = (total_size - status.total_download / (1024 * 1024)) * 1024 * 1024
+        eta_seconds = max(0, int(remaining_bytes / status.download_rate))
+
+    start_time = prev.get("start_time")
+    elapsed_seconds = int(datetime.now().timestamp() - start_time) if start_time else 0
+
+    completed = status.is_seeding or status.progress >= 1.0
     info = {
-        "status": "downloading" if not status.is_seeding else "completed",
+        "status": "completed" if completed else "downloading",
         "progress": status.progress * 100,
-        "name": status.name,
+        "name": status.name or prev.get("name", "Fetching metadata…"),
         "download_rate": status.download_rate / 1024,  # KB/s
-        "upload_rate": status.upload_rate / 1024,  # KB/s
+        "upload_rate": status.upload_rate / 1024,       # KB/s
         "num_seeds": status.num_seeds,
         "num_peers": status.num_peers,
         "total_download": status.total_download / (1024 * 1024),  # MB
-        "total_upload": status.total_upload / (1024 * 1024),  # MB
+        "total_upload": status.total_upload / (1024 * 1024),       # MB
         "total_size": total_size,  # MB
-        "eta_seconds": eta_seconds,  # Estimated time remaining in seconds
-        "elapsed_seconds": elapsed_seconds,  # Time elapsed since download started
-        "start_time": start_time,  # Preserve start time for future calculations
+        "eta_seconds": eta_seconds,
+        "elapsed_seconds": elapsed_seconds,
+        "start_time": start_time,
+        "path": prev.get("path"),
     }
-    
     download_info[download_id] = info
-    
-    # Auto-cleanup if completed
-    if status.is_seeding and status.progress >= 1.0:
-        info["status"] = "completed"
-    
     return info
 
 
+@app.get("/api/downloads")
+def list_downloads():
+    """Return every known download (active, completed, cancelled, errored)."""
+    items = []
+    for did in list(active_downloads.keys()):
+        info = _build_progress(did, active_downloads[did])
+        items.append({"id": did, **info})
+    # Terminal items that are no longer in the session (cancelled / errored)
+    for did, info in download_info.items():
+        if did not in active_downloads:
+            items.append({"id": did, **info})
+    items.sort(key=lambda x: x.get("start_time") or 0)
+    return {"downloads": items}
+
+
+@app.get("/api/progress/{download_id}")
+def get_progress(download_id: str):
+    """Get download progress for a single torrent."""
+    if download_id not in active_downloads:
+        if download_id in download_info:
+            return {"id": download_id, **download_info[download_id]}
+        raise HTTPException(status_code=404, detail="Download not found")
+    return {"id": download_id, **_build_progress(download_id, active_downloads[download_id])}
+
+
+@app.post("/api/dismiss")
+def dismiss_download(request: CancelRequest):
+    """Remove a finished/errored download from the list WITHOUT deleting files."""
+    handle = active_downloads.pop(request.download_id, None)
+    if handle is not None:
+        try:
+            torrent_session.remove_torrent(handle)  # no delete_files -> keep data
+        except Exception as e:
+            print(f"Error removing torrent on dismiss: {e}")
+    download_info.pop(request.download_id, None)
+    return {"message": "Download removed from list"}
+
+
 @app.post("/api/cancel")
-async def cancel_download(request: CancelRequest):
+def cancel_download(request: CancelRequest):
     """Cancel an active download and delete partial files"""
     if request.download_id not in active_downloads:
         raise HTTPException(status_code=404, detail="Download not found")
@@ -700,31 +772,30 @@ async def cancel_download(request: CancelRequest):
 
 
 @app.get("/api/plex/health")
-async def check_plex_health():
-    """Check if Plex server is accessible and working"""
-    if plex is None:
-        raise HTTPException(status_code=503, detail="Plex server not configured or token missing")
-    
+def check_plex_health():
+    """Report Plex connectivity. Always 200 — Plex is optional, so a missing or
+    unreachable server is a normal state, not an HTTP error."""
+    p = get_plex()
+    if p is None:
+        return {"connected": False, "message": "Plex server not configured or token missing"}
+
     try:
-        # Try to access the library sections to verify connection
-        plex.library.sections()
-        return {
-            "status": "ok",
-            "message": "Plex server is connected and working"
-        }
+        p.library.sections()
+        return {"connected": True, "message": "Plex server is connected and working"}
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Cannot connect to Plex server: {str(e)}")
+        return {"connected": False, "message": f"Cannot connect to Plex server: {str(e)}"}
 
 
 @app.get("/api/plex/libraries")
-async def get_plex_libraries():
+def get_plex_libraries():
     """Get list of Plex libraries"""
-    if plex is None:
+    p = get_plex()
+    if p is None:
         raise HTTPException(status_code=503, detail="Plex server not configured")
-    
+
     try:
         libraries = []
-        for section in plex.library.sections():
+        for section in p.library.sections():
             libraries.append({
                 "key": section.key,
                 "title": section.title,
@@ -736,28 +807,15 @@ async def get_plex_libraries():
 
 
 @app.post("/api/plex/refresh")
-async def refresh_plex_library(request: PlexRefreshRequest):
+def refresh_plex_library(request: PlexRefreshRequest):
     """Refresh a specific Plex library"""
-    if plex is None:
+    p = get_plex()
+    if p is None:
         raise HTTPException(status_code=503, detail="Plex server not configured")
-    
+
     try:
-        section = plex.library.section(request.library_name)
+        section = p.library.section(request.library_name)
         section.update()
-        
-        # Clean up any completed downloads from active tracking
-        # This helps free up memory for completed downloads
-        completed_ids = []
-        for download_id, info in download_info.items():
-            if info.get('status') == 'completed':
-                completed_ids.append(download_id)
-        
-        for download_id in completed_ids:
-            if download_id in active_downloads:
-                del active_downloads[download_id]
-            if download_id in download_info:
-                del download_info[download_id]
-        
         return {"message": f"Library '{request.library_name}' refresh started"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -769,6 +827,4 @@ app.mount("/", StaticFiles(directory="web", html=True), name="web")
 
 if __name__ == "__main__":
     import uvicorn
-    # Create web directory if it doesn't exist
-    os.makedirs("web", exist_ok=True)
     uvicorn.run(app, host="0.0.0.0", port=8000)

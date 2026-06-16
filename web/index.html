@@ -4,1463 +4,197 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plexy — Torrent Downloader for Plex</title>
-    <meta name="theme-color" content="#08080c">
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'><path fill='%23e5a00d' d='M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z'/><path fill='%23111' d='M200 352V160l128 96-128 96z'/></svg>">
-
-    <!-- External CSS (fonts loaded via @import in CSS) -->
+    <meta name="theme-color" content="#0c0c0e">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'><circle cx='256' cy='256' r='256' fill='%23e5a00d'/><path fill='%231a1402' d='M200 352V160l128 96-128 96z'/></svg>">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Toast Notification Container -->
-    <div class="toast-container" id="toastContainer"></div>
+    <div class="toasts" id="toasts"></div>
 
-    <div class="container">
-        <!-- Header -->
-        <a href="/" style="text-decoration: none; color: inherit;">
-            <h1>
-                <svg class="plex-logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#e5a00d;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#f5c518;stop-opacity:1" />
-                        </linearGradient>
-                    </defs>
-                    <path fill="url(#logoGradient)" d="M512 256c0 141.4-114.6 256-256 256S0 397.4 0 256 114.6 0 256 0s256 114.6 256 256z"/>
-                    <path fill="#0a0a0f" d="M200 352V160l128 96-128 96z"/>
+    <div class="app">
+        <!-- Masthead -->
+        <header class="masthead">
+            <a class="brand" href="/" aria-label="Plexy home">
+                <svg class="brand-mark" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="256" cy="256" r="256" fill="#e5a00d"/>
+                    <path fill="#1a1402" d="M200 352V160l128 96-128 96z"/>
                 </svg>
-                Plexy
-                <span style="font-family: var(--font-mono); font-size: 13px; font-weight: 600; margin-left: -4px; margin-top: 16px; letter-spacing: 0.06em; color: var(--text-secondary);">v1.3.0</span>
-            </h1>
-        </a>
-        <p class="subtitle">Automated torrent management with seamless Plex integration</p>
-
-        <!-- Step Indicator -->
-        <div class="step-indicator">
-            <div class="step active" id="step1">
-                <div class="step-number">1</div>
-                <div class="step-label">Source</div>
+                <span class="brand-name">Plexy</span>
+                <span class="brand-version">v1.4.0</span>
+            </a>
+            <div class="masthead-spacer"></div>
+            <div class="plex-chip is-checking" id="plexChip" title="Plex connection status">
+                <span class="dot"></span>
+                <span class="label" id="plexChipLabel">Checking Plex…</span>
             </div>
-            <div class="step" id="step2">
-                <div class="step-number">2</div>
-                <div class="step-label">Destination</div>
-            </div>
-            <div class="step" id="step3">
-                <div class="step-number">3</div>
-                <div class="step-label">Confirm</div>
-            </div>
-            <div class="step" id="step4">
-                <div class="step-number">4</div>
-                <div class="step-label">Download</div>
-            </div>
-            <div class="step" id="step5">
-                <div class="step-number">5</div>
-                <div class="step-label">Plex</div>
-            </div>
-        </div>
+        </header>
 
-        <!-- Step 1: Torrent Source -->
-        <div class="section" id="magnet-section">
-            <div class="tabs" role="tablist" aria-label="Torrent source selection">
-                <button class="tab active" role="tab" aria-selected="true" aria-controls="file-tab" onclick="switchTab('file')">
-                    📁 Torrent File
-                </button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="manual-tab" onclick="switchTab('manual')">
-                    🧲 Magnet Link
-                </button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="nyaa-tab" onclick="switchTab('nyaa')">
-                    🔍 Nyaa Search
-                </button>
-            </div>
-
-            <!-- Tab 1: Torrent File Upload -->
-            <div class="tab-content active" id="file-tab" role="tabpanel">
-                <input type="file" id="torrentFileInput" accept=".torrent" style="display: none;" onchange="handleFileSelect(event)" aria-label="Select torrent file">
-
-                <div class="file-upload-container">
-                    <div class="file-upload-box" onclick="document.getElementById('torrentFileInput').click()">
-                        <div class="file-upload-icon">📦</div>
-                        <div class="file-upload-text">
-                            <div class="file-upload-title">Upload Torrent File</div>
-                            <div class="file-upload-hint">Click to browse or drag &amp; drop your .torrent file</div>
-                        </div>
-                    </div>
-
-                    <div id="fileInfo" class="file-info-display"></div>
-
-                    <button class="btn btn-primary btn-fullwidth" id="proceedFromFile" onclick="proceedFromFile()" disabled style="display: none;">
-                        Continue to Folder Selection →
-                    </button>
-                </div>
-            </div>
-
-            <!-- Tab 2: Magnet Link -->
-            <div class="tab-content" id="manual-tab" role="tabpanel">
-                <div style="display: flex; flex-direction: column; gap: 18px;">
+        <!-- ============ Add a download ============ -->
+        <section class="card add-card">
+            <div class="add-header">
+                <div class="section-head">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     <div>
-                        <label for="magnetInput" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-secondary); font-size: 13px;">
-                            Magnet Link
-                        </label>
-                        <input type="text" id="magnetInput" placeholder="magnet:?xt=urn:btih:..." aria-label="Enter magnet link" oninput="torrentFiles = []; selectedFileIndices = [];">
-                        <div class="keyboard-hint"><span class="kbd">Enter</span> to continue</div>
+                        <div class="section-title" id="addTitle">Add a download</div>
+                        <div class="section-sub" id="addSub">Choose a torrent source to get started</div>
                     </div>
-                    <button class="btn btn-primary btn-fullwidth" onclick="proceedToFolderSelection(this)">
-                        Continue to Folder Selection →
+                </div>
+                <div class="crumbs" id="addCrumbs" hidden></div>
+            </div>
+
+            <!-- view: source -->
+            <div class="add-view" id="view-source">
+                <div class="tabs" role="tablist" aria-label="Torrent source">
+                    <button class="tab active" role="tab" data-tab="file" aria-selected="true">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                        <span class="label">Torrent File</span>
+                    </button>
+                    <button class="tab" role="tab" data-tab="magnet" aria-selected="false">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15a6 6 0 1 1 12 0v6h-4v-6a2 2 0 1 0-4 0v6H6z"/><line x1="6" y1="9" x2="10" y2="9"/><line x1="14" y1="9" x2="18" y2="9"/></svg>
+                        <span class="label">Magnet Link</span>
+                    </button>
+                    <button class="tab" role="tab" data-tab="nyaa" aria-selected="false">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <span class="label">Nyaa Search</span>
+                    </button>
+                </div>
+
+                <div class="tab-panel" id="panel-file" role="tabpanel">
+                    <input type="file" id="fileInput" accept=".torrent" hidden>
+                    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload torrent file">
+                        <div class="dropzone-icon">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <div>
+                            <div class="dropzone-title">Upload torrent file</div>
+                            <div class="dropzone-hint">Click to browse or drag &amp; drop a .torrent file</div>
+                        </div>
+                    </div>
+                    <div class="file-pill" id="filePill"></div>
+                    <button class="btn btn-primary btn-block" id="fileContinue" hidden style="margin-top:14px">
+                        Continue
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </button>
+                </div>
+
+                <div class="tab-panel" id="panel-magnet" role="tabpanel" hidden>
+                    <div class="field">
+                        <label class="label" for="magnetInput">Magnet link</label>
+                        <input type="text" class="input input-mono" id="magnetInput" placeholder="magnet:?xt=urn:btih:…" autocomplete="off">
+                        <span class="hint-line"><span class="kbd">Enter</span> to continue</span>
+                    </div>
+                    <button class="btn btn-primary btn-block" id="magnetContinue" style="margin-top:16px">
+                        Continue
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </button>
+                </div>
+
+                <div class="tab-panel" id="panel-nyaa" role="tabpanel" hidden>
+                    <div class="search-bar">
+                        <input type="text" class="input" id="nyaaInput" placeholder="Search anime torrents on nyaa.si…" autocomplete="off">
+                        <button class="btn btn-primary" id="nyaaSearchBtn">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            Search
+                        </button>
+                    </div>
+                    <span class="hint-line"><span class="kbd">Enter</span> to search · sorted by seeders</span>
+                    <div id="nyaaResults" aria-live="polite"></div>
+                </div>
+            </div>
+
+            <!-- view: file selection -->
+            <div class="add-view" id="view-files" hidden>
+                <div class="fs-summary" id="fsSummary"></div>
+                <div class="fs-toolbar">
+                    <span class="fs-stat"><b id="fsSelCount">0</b> of <b id="fsTotalCount">0</b> files · <b id="fsSelSize">0 B</b></span>
+                    <button class="btn btn-secondary btn-sm" id="fsToggleAll">Deselect all</button>
+                </div>
+                <div class="fs-list" id="fsList"><div class="fs-viewport" id="fsViewport"></div></div>
+                <label class="checkrow" for="flattenCheck" style="margin-top:14px">
+                    <input type="checkbox" class="check" id="flattenCheck">
+                    <span>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                        Flatten directory structure
+                        <span class="hint">— save all files into one folder</span>
+                    </span>
+                </label>
+                <div class="btn-row">
+                    <button class="btn btn-secondary" id="filesBack">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        Back
+                    </button>
+                    <button class="btn btn-primary grow" id="filesContinue">
+                        Continue
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </button>
                 </div>
             </div>
 
-            <!-- Tab 3: Nyaa Search -->
-            <div class="tab-content" id="nyaa-tab" role="tabpanel">
-                <div class="search-box">
-                    <input type="text" id="nyaaSearch" placeholder="Search anime torrents on nyaa.si..." aria-label="Search nyaa.si" style="flex: 1;">
-                    <button class="btn btn-primary" onclick="searchNyaa()">
-                        Search
+            <!-- view: destination -->
+            <div class="add-view" id="view-dest" hidden>
+                <div class="browser">
+                    <div class="browser-bar">
+                        <div class="crumb">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                            <span class="path" id="crumbPath">/</span>
+                        </div>
+                        <span class="browser-count" id="browserCount"></span>
+                        <button class="btn btn-secondary btn-sm" id="newFolderBtn" title="Create folder here">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                            New
+                        </button>
+                    </div>
+                    <div class="browser-filter">
+                        <input type="text" class="input" id="folderFilter" placeholder="Filter folders…" autocomplete="off">
+                    </div>
+                    <div class="browser-list" id="folderList"></div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-secondary" id="destBack">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        Back
+                    </button>
+                    <button class="btn btn-primary grow" id="addBtn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add download to <span id="addBtnPath" class="mono" style="font-family:var(--mono)">/</span>
                     </button>
                 </div>
-                <div class="keyboard-hint" style="margin-top: -12px; margin-bottom: 12px;"><span class="kbd">Enter</span> to search</div>
-                <div id="searchResults" role="region" aria-live="polite"></div>
             </div>
-        </div>
+        </section>
 
-        <!-- Step 1.5: File Selection -->
-        <div class="section hidden" id="file-selection-section">
-            <div class="section-title">📦 Select Files to Download</div>
-            <div id="torrentInfoDisplay" style="margin-bottom: 14px; padding: 14px; background: var(--primary-light); border-radius: var(--radius-lg); border: 1px solid rgba(229,160,13,0.2);"></div>
-
-            <div class="file-selection-header">
-                <div class="file-selection-stats">
-                    <span id="selectedFileCount">0</span> of <span id="totalFileCount">0</span> files selected
-                    (<span id="selectedFileSize">0 B</span> of <span id="totalFileSize">0 B</span>)
+        <!-- ============ Downloads ============ -->
+        <section class="card">
+            <div class="section-head between">
+                <div class="left">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <div class="section-title">Downloads</div>
                 </div>
-                <button class="btn btn-sm btn-secondary" onclick="toggleAllFiles()" id="toggleAllBtn">Select All</button>
+                <span class="count-pill" id="dlCount" hidden>0</span>
             </div>
+            <div id="dlList"></div>
+        </section>
 
-            <div class="file-list-container" id="fileListContainer">
-                <div class="file-list-viewport" id="fileListViewport"></div>
-            </div>
-
-            <div class="checkbox-option" style="margin: 14px 0;">
-                <input type="checkbox" id="flattenAllCheckbox">
-                <label for="flattenAllCheckbox">
-                    📂 Flatten directory structure
-                </label>
-            </div>
-
-            <div class="btn-group" style="margin-top: 18px;">
-                <button class="btn btn-primary" onclick="proceedToFolderSelection(this)" id="proceedFromFileSelection">
-                    Continue to Folder Selection →
-                </button>
-                <button class="btn btn-secondary" onclick="goBackToSource()">
-                    ← Back
-                </button>
-            </div>
-        </div>
-
-        <!-- Step 2: Destination -->
-        <div class="section hidden" id="folder-section">
-            <div class="section-title">📍 Select Download Destination</div>
-            <div class="folder-browser" id="folderBrowser" role="navigation" aria-label="Folder browser">
-                <div class="current-path" id="currentPath" aria-live="polite">/</div>
-                <div class="folder-stats" id="folderStats"></div>
-                <input type="text" id="folderFilter" placeholder="Filter folders..." oninput="filterFolders()" autocomplete="off" aria-label="Filter folders" style="margin-bottom: 8px;">
-                <div id="folderList"></div>
-            </div>
-
-            <div class="btn-group">
-                <button class="btn btn-primary" onclick="selectCurrentFolder()">
-                    ✓ Download Here
-                </button>
-                <button class="btn btn-secondary" onclick="goBack()">
-                    ← Back
-                </button>
-            </div>
-        </div>
-
-        <!-- Step 3: Confirm Download -->
-        <div class="section hidden" id="confirm-section">
-            <div class="section-title">Confirm Download</div>
-
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
-                <div style="background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em;">📍 Destination</div>
-                    <div id="confirmDestination" style="font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); word-break: break-all;"></div>
-                </div>
-                <div style="background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em;">📦 Torrent</div>
-                    <div id="confirmTorrentName" style="font-size: 14px; font-weight: 600; color: var(--text-primary); word-break: break-word; margin-bottom: 4px;"></div>
-                    <div id="confirmFilesInfo" style="font-size: 13px; color: var(--text-secondary);"></div>
-                </div>
-                <div id="confirmOptions" style="display: none; background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
-                    <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em;">⚙️ Options</div>
-                    <div id="confirmOptionsContent" style="font-size: 13px; color: var(--text-primary);"></div>
+        <!-- ============ Plex ============ -->
+        <section class="card">
+            <div class="section-head">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>
+                <div>
+                    <div class="section-title">Plex library</div>
+                    <div class="section-sub">Scan a library to pick up newly downloaded files</div>
                 </div>
             </div>
-
-            <div class="btn-group">
-                <button class="btn btn-primary" onclick="confirmAndDownload()">
-                    ✓ Start Download
-                </button>
-                <button class="btn btn-secondary" onclick="goBackFromConfirm()">
-                    ← Back
-                </button>
-            </div>
-        </div>
-
-        <!-- Step 4: Download Progress -->
-        <div class="progress-container" id="progressContainer">
-            <div class="section-title">Download in Progress</div>
-            <div id="downloadName" style="font-family: var(--font-display); font-weight: 700; margin-bottom: 10px; color: var(--text-primary); font-size: 15px;">Initializing download...</div>
-
-            <div class="progress-track-outer">
-                <div class="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                    <div class="progress-bar" id="progressBar" style="width:0%"></div>
-                </div>
-                <span class="progress-pct" id="progressPercent">0%</span>
-            </div>
-
-            <div class="progress-info">
-                <div class="progress-item">
-                    <div class="progress-label">⬇️ Download</div>
-                    <div class="progress-value" id="downloadSpeed">0 KB/s</div>
-                </div>
-                <div class="progress-item">
-                    <div class="progress-label">⬆️ Upload</div>
-                    <div class="progress-value" id="uploadSpeed">0 KB/s</div>
-                </div>
-                <div class="progress-item">
-                    <div class="progress-label">👥 Seeds / Peers</div>
-                    <div class="progress-value" id="peers">0 / 0</div>
-                </div>
-                <div class="progress-item">
-                    <div class="progress-label">💾 Downloaded</div>
-                    <div class="progress-value" id="downloaded">0 MB</div>
-                </div>
-                <div class="progress-item">
-                    <div class="progress-label">⏱️ Elapsed</div>
-                    <div class="progress-value" id="timeElapsed">0s</div>
-                </div>
-                <div class="progress-item">
-                    <div class="progress-label">⏳ Remaining</div>
-                    <div class="progress-value" id="eta">Calculating...</div>
+            <div id="plexBody">
+                <div class="plex-controls">
+                    <select class="select" id="plexLibrary"><option value="">Loading libraries…</option></select>
+                    <button class="btn btn-success" id="refreshBtn" disabled>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+                        Refresh
+                    </button>
                 </div>
             </div>
-
-            <!-- Files being downloaded -->
-            <div id="downloadingFilesList" style="display: none; margin-top: 20px; margin-bottom: 20px;">
-                <div style="background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
-                    <div style="font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 16px;">📦</span>
-                        <span>Files in Download Queue</span>
-                    </div>
-                    <div id="downloadingFilesContent" style="max-height: 220px; overflow-y: auto; font-size: 13px;"></div>
-                </div>
-            </div>
-
-            <div class="btn-group" style="margin-top: 20px;">
-                <button class="btn btn-danger btn-fullwidth" onclick="cancelDownload()" id="cancelBtn">
-                    ✕ Cancel Download
-                </button>
-            </div>
-            <button class="btn btn-success btn-fullwidth" onclick="proceedToPlex()" id="proceedPlexBtn" style="display: none; margin-top: 14px;">
-                ✓ Download Complete — Update Plex →
-            </button>
-            <button class="btn btn-outline-primary btn-fullwidth" onclick="startOver()" id="newDownloadBtnProgress" style="display: none; margin-top: 10px;">
-                ↩ Start New Download
-            </button>
-        </div>
-
-        <!-- Step 4: Plex Library Refresh -->
-        <div class="section plex-section" id="plex-section">
-            <div id="alertContainer" role="alert" aria-live="polite"></div>
-            <div class="section-title">🎬 Update Plex Media Library</div>
-            <div style="margin-bottom: 18px;">
-                <label for="plexLibrary" style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-secondary); font-size: 13px;">
-                    Select Library to Refresh
-                </label>
-                <select id="plexLibrary" aria-label="Select Plex library" onchange="onLibrarySelected()">
-                    <option value="">Loading libraries...</option>
-                </select>
-            </div>
-            <div class="btn-group">
-                <button class="btn btn-success btn-fullwidth" onclick="refreshPlex()" id="refreshLibraryBtn" disabled>
-                    ↻ Refresh Plex Library
-                </button>
-            </div>
-            <button class="btn btn-outline-primary btn-fullwidth" onclick="startOver()" style="margin-top: 10px;">
-                ↩ Start New Download
-            </button>
-        </div>
+        </section>
     </div>
-    
-    <!-- JavaScript (same as before) -->
-    <script>
-        let currentPath = '/';
-        let magnetLink = '';
-        let downloadId = null;
-        let progressInterval = null;
-        let selectedSearchResult = null;
-        let selectedTorrentFile = null;
-        let plexHealthy = false;
-        let plexHealthChecked = false;
-        let confirmedPath = '';
-        
-        // File selection variables
-        let torrentFiles = [];
-        let selectedFileIndices = [];
-        let allFilesSelected = true;
-        let downloadingFiles = [];
-        
-        // Session restoration
-        function checkAndRestoreSession() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlDownloadId = urlParams.get('download_id');
-            const urlStep = urlParams.get('step');
-            
-            if (urlDownloadId) {
-                downloadId = urlDownloadId;
-                
-                if (urlStep === 'plex') {
-                    document.getElementById('magnet-section').classList.add('hidden');
-                    document.getElementById('progressContainer').style.display = 'none';
-                    document.getElementById('plex-section').style.display = 'block';
-                    setStep(5);
-                } else {
-                    document.getElementById('magnet-section').classList.add('hidden');
-                    document.getElementById('progressContainer').style.display = 'block';
-                    setStep(4);
-                    progressInterval = setInterval(updateProgress, 1000);
-                    updateProgress();
-                }
-            }
-        }
-        
-        function updateURLWithDownloadId(id, step = 'download') {
-            const url = new URL(window.location);
-            url.searchParams.set('download_id', id);
-            url.searchParams.set('step', step);
-            window.history.pushState({}, '', url);
-        }
-        
-        function updateURLStep(step) {
-            const url = new URL(window.location);
-            if (downloadId) {
-                url.searchParams.set('download_id', downloadId);
-                url.searchParams.set('step', step);
-                window.history.pushState({}, '', url);
-            }
-        }
-        
-        function clearDownloadIdFromURL() {
-            const url = new URL(window.location);
-            url.searchParams.delete('download_id');
-            url.searchParams.delete('step');
-            window.history.pushState({}, '', url);
-        }
-        
-        function formatTime(seconds) {
-            if (seconds < 0 || !isFinite(seconds)) return 'Unknown';
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = Math.floor(seconds % 60);
-            
-            if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
-            if (minutes > 0) return `${minutes}m ${secs}s`;
-            return `${secs}s`;
-        }
-        
-        checkPlexHealth();
-        checkAndRestoreSession();
-        
-        async function checkPlexHealth() {
-            try {
-                const response = await fetch('/api/plex/health');
-                if (response.ok) {
-                    plexHealthy = true;
-                    plexHealthChecked = true;
-                    await loadPlexLibraries();
-                } else {
-                    throw new Error('Plex health check failed');
-                }
-            } catch (error) {
-                console.error('Plex health check failed:', error);
-                plexHealthy = false;
-                plexHealthChecked = true;
-                
-                const container = document.querySelector('.container');
-                const errorBanner = document.createElement('div');
-                errorBanner.style.cssText = `
-                    background: rgba(248, 113, 113, 0.08);
-                    border: 1px solid rgba(248, 113, 113, 0.25);
-                    border-radius: 14px;
-                    padding: 24px;
-                    margin-bottom: 28px;
-                `;
-                errorBanner.innerHTML = `
-                    <div style="display: flex; align-items: flex-start; gap: 16px;">
-                        <div style="flex-shrink: 0; width: 44px; height: 44px; background: rgba(248,113,113,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #f87171; font-size: 22px; font-weight: bold;">!</div>
-                        <div style="flex: 1;">
-                            <h3 style="margin: 0 0 10px 0; color: #f87171; font-size: 17px; font-weight: 700; font-family: var(--font-display);">Plex Connection Required</h3>
-                            <p style="margin: 0 0 14px 0; color: #9a9494; font-size: 14px; line-height: 1.6;">Unable to connect to your Plex Media Server. A valid Plex connection is required.</p>
-                            <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 14px; border: 1px solid rgba(255,255,255,0.06);">
-                                <p style="margin: 0 0 10px 0; color: #9a9494; font-size: 13px; font-weight: 600;">🔧 Troubleshooting:</p>
-                                <ul style="margin: 0; padding-left: 20px; color: #9a9494; font-size: 13px; line-height: 2;">
-                                    <li>Verify <code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-weight: 500; color: #f87171;">PLEX_URL</code> environment variable</li>
-                                    <li>Ensure <code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono); font-weight: 500; color: #f87171;">PLEX_TOKEN</code> is valid</li>
-                                    <li>Check that Plex Media Server is running</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.insertBefore(errorBanner, container.firstChild.nextSibling);
-                
-                // Disable UI
-                document.querySelectorAll('.tab, #magnetInput, #nyaaSearch, #torrentFileInput, #magnet-section .btn').forEach(el => {
-                    el.disabled = true;
-                    el.style.opacity = '0.5';
-                    el.style.cursor = 'not-allowed';
-                    el.style.pointerEvents = 'none';
-                });
-                
-                const fileUploadBox = document.querySelector('.file-upload-box');
-                if (fileUploadBox) {
-                    fileUploadBox.style.opacity = '0.5';
-                    fileUploadBox.style.cursor = 'not-allowed';
-                    fileUploadBox.style.pointerEvents = 'none';
-                }
-                
-                document.getElementById('plexLibrary').innerHTML = '<option value="">Plex not available</option>';
-            }
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const nyaaSearch = document.getElementById('nyaaSearch');
-            if (nyaaSearch) {
-                nyaaSearch.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') searchNyaa();
-                });
-            }
-            
-            const magnetInput = document.getElementById('magnetInput');
-            if (magnetInput) {
-                magnetInput.focus();
-                magnetInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        const btn = this.closest('.tab-content').querySelector('.btn-primary');
-                        if (btn) btn.click();
-                    }
-                });
-            }
-            
-            const fileUploadBox = document.querySelector('.file-upload-box');
-            const fileInput = document.getElementById('torrentFileInput');
-            
-            if (fileUploadBox && fileInput) {
-                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                    fileUploadBox.addEventListener(eventName, preventDefaults, false);
-                    document.body.addEventListener(eventName, preventDefaults, false);
-                });
-                
-                ['dragenter', 'dragover'].forEach(eventName => {
-                    fileUploadBox.addEventListener(eventName, function() {
-                        fileUploadBox.style.borderColor = 'var(--primary)';
-                        fileUploadBox.style.background = 'var(--primary-light)';
-                    }, false);
-                });
-                
-                ['dragleave', 'drop'].forEach(eventName => {
-                    fileUploadBox.addEventListener(eventName, function() {
-                        fileUploadBox.style.borderColor = '';
-                        fileUploadBox.style.background = '';
-                    }, false);
-                });
-                
-                fileUploadBox.addEventListener('drop', function(e) {
-                    const dt = e.dataTransfer;
-                    const files = dt.files;
-                    if (files.length > 0) {
-                        const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(files[0]);
-                        fileInput.files = dataTransfer.files;
-                        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                }, false);
-            }
-            
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        });
-        
-        function switchTab(tabName) {
-            if (!plexHealthy) {
-                showAlert('Cannot switch tabs: Plex connection required', 'error');
-                return;
-            }
-            
-            document.querySelectorAll('.tab').forEach(tab => {
-                const isActive = tab.getAttribute('onclick').includes(tabName);
-                tab.classList.toggle('active', isActive);
-                tab.setAttribute('aria-selected', isActive);
-            });
-            
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            const targetTab = document.getElementById(tabName + '-tab');
-            if (targetTab) targetTab.classList.add('active');
-            
-            magnetLink = '';
-            selectedSearchResult = null;
-            selectedTorrentFile = null;
-            
-            const fileInput = document.getElementById('torrentFileInput');
-            const fileInfo = document.getElementById('fileInfo');
-            const proceedFromFile = document.getElementById('proceedFromFile');
-            if (fileInput) fileInput.value = '';
-            if (fileInfo) {
-                fileInfo.textContent = '';
-                fileInfo.classList.remove('active');
-            }
-            if (proceedFromFile) {
-                proceedFromFile.disabled = true;
-                proceedFromFile.style.display = 'none';
-            }
-            
-            setTimeout(() => {
-                if (tabName === 'manual') document.getElementById('magnetInput').focus();
-                else if (tabName === 'nyaa') document.getElementById('nyaaSearch').focus();
-            }, 0);
-        }
-        
-        async function searchNyaa() {
-            if (!plexHealthy) {
-                showAlert('Cannot search: Plex connection required', 'error');
-                return;
-            }
-            
-            const query = document.getElementById('nyaaSearch').value.trim();
-            if (!query) {
-                showAlert('Please enter a search query', 'error');
-                return;
-            }
-            
-            const resultsContainer = document.getElementById('searchResults');
-            const searchButton = event.target;
-            searchButton.disabled = true;
-            searchButton.textContent = '🔍 Searching...';
-            
-            resultsContainer.innerHTML = '<div class="loading">Searching nyaa.si...</div>';
-            
-            try {
-                const response = await fetch(`/api/search/nyaa?query=${encodeURIComponent(query)}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
-                const data = await response.json();
-                
-                if (!data.results || data.results.length === 0) {
-                    resultsContainer.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-title">No results found</div>
-                            <div class="empty-state-description">Try different search terms</div>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                data.results.sort((a, b) => b.seeders - a.seeders);
-                
-                resultsContainer.innerHTML = '<div class="search-results">' +
-                    data.results.map((result, index) => `
-                        <div class="result-item" onclick="selectSearchResult(${index}, event)" data-magnet="${escapeHtml(result.magnet)}" tabindex="0" role="button">
-                            <div class="result-name">${escapeHtml(result.name)}</div>
-                            <div class="result-meta">
-                                <span>${escapeHtml(result.date)}</span>
-                                <span>${escapeHtml(result.size)}</span>
-                                <span class="result-badge seeders">Seeds: ${escapeHtml(result.seeders)}</span>
-                                <span class="result-badge leechers">Peers: ${escapeHtml(result.leechers)}</span>
-                                <span>${escapeHtml(result.category)}</span>
-                            </div>
-                        </div>
-                    `).join('') + '</div>';
-                
-                window.searchResults = data.results;
-                resultsContainer.innerHTML += '<button class="btn btn-primary btn-fullwidth" id="proceedFromSearch" onclick="proceedFromSearch()" disabled style="margin-top: 24px;">Continue to Folder Selection →</button>';
-                
-            } catch (error) {
-                resultsContainer.innerHTML = `<div class="alert alert-error">Error: ${escapeHtml(error.message)}</div>`;
-            } finally {
-                searchButton.disabled = false;
-                searchButton.textContent = '🔍 Search';
-            }
-        }
-        
-        function selectSearchResult(index, evt) {
-            if (evt) {
-                evt.preventDefault();
-                evt.stopPropagation();
-            }
-            
-            document.querySelectorAll('.result-item').forEach(item => {
-                item.classList.remove('selected');
-                item.setAttribute('aria-selected', 'false');
-            });
-            
-            const selectedItem = evt ? evt.currentTarget : document.querySelectorAll('.result-item')[index];
-            selectedItem.classList.add('selected');
-            selectedItem.setAttribute('aria-selected', 'true');
-            selectedSearchResult = window.searchResults[index];
-            magnetLink = selectedSearchResult.magnet;
-            
-            torrentFiles = [];
-            selectedFileIndices = [];
-            
-            const proceedButton = document.getElementById('proceedFromSearch');
-            if (proceedButton) proceedButton.disabled = false;
-        }
-        
-        function proceedFromSearch() {
-            if (!magnetLink) {
-                showAlert('Please select a torrent first', 'error');
-                return;
-            }
-            proceedToFolderSelection(document.getElementById('proceedFromSearch'));
-        }
-        
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            if (!file.name.endsWith('.torrent')) {
-                showAlert('Please select a valid .torrent file', 'error');
-                event.target.value = '';
-                return;
-            }
-            
-            torrentFiles = [];
-            selectedFileIndices = [];
-            selectedTorrentFile = file;
-            
-            const fileInfo = document.getElementById('fileInfo');
-            const proceedButton = document.getElementById('proceedFromFile');
-            
-            fileInfo.innerHTML = `<strong>✓ Selected:</strong> ${escapeHtml(file.name)} <span style="color: var(--text-muted);">(${(file.size / 1024).toFixed(2)} KB)</span>`;
-            fileInfo.classList.add('active');
-            proceedButton.disabled = false;
-            proceedButton.style.display = 'block';
-        }
-        
-        function proceedFromFile() {
-            if (!selectedTorrentFile) {
-                showAlert('Please select a torrent file first', 'error');
-                return;
-            }
-            checkTorrentFiles();
-        }
-        
-        async function checkTorrentFiles(loadingButton = null) {
-            try {
-                let response;
-                
-                if (selectedTorrentFile) {
-                    const formData = new FormData();
-                    formData.append('file', selectedTorrentFile);
-                    response = await fetch('/api/torrent/info/file', {
-                        method: 'POST',
-                        body: formData
-                    });
-                } else if (magnetLink) {
-                    response = await fetch('/api/torrent/info', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ magnet_link: magnetLink })
-                    });
-                }
-                
-                if (!response.ok) {
-                    if (loadingButton) restoreButton(loadingButton);
-                    let errorMessage = 'Failed to load torrent information';
-                    
-                    try {
-                        const errorData = await response.json();
-                        if (errorData.detail) errorMessage = errorData.detail;
-                    } catch (e) {}
-                    
-                    if (response.status === 400) {
-                        showAlert(`Invalid torrent: ${errorMessage}`, 'error');
-                    } else if (response.status === 408) {
-                        showAlert('Timeout: Could not retrieve metadata', 'error');
-                    } else {
-                        showAlert(`Error: ${errorMessage}`, 'error');
-                    }
-                    return;
-                }
-                
-                const data = await response.json();
-                if (loadingButton) restoreButton(loadingButton);
-                
-                if (data.num_files >= 1) {
-                    showFileSelection(data);
-                } else {
-                    proceedDirectlyToFolderSelection(data);
-                }
-            } catch (error) {
-                console.error('Error getting torrent info:', error);
-                if (loadingButton) restoreButton(loadingButton);
-                showAlert('Error loading torrent: ' + error.message, 'error');
-            }
-        }
-        
-        function showFileSelection(torrentData) {
-            torrentFiles = torrentData.files;
-            selectedFileIndices = torrentData.files.map((f, idx) => idx);
-            allFilesSelected = true;
-            
-            document.getElementById('torrentInfoDisplay').innerHTML = `
-                <div style="font-family: var(--font-display); font-weight: 700; margin-bottom: 4px; word-break: break-word; font-size: 15px; color: var(--text-primary);">${escapeHtml(torrentData.name)}</div>
-                <div style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">
-                    ${torrentData.num_files} files • Total: ${formatFileSize(torrentData.total_size)}
-                </div>
-            `;
-            
-            document.getElementById('totalFileCount').textContent = torrentData.num_files;
-            renderFileList();
-            updateFileSelectionStats();
-            
-            document.getElementById('magnet-section').classList.add('hidden');
-            const fileSection = document.getElementById('file-selection-section');
-            fileSection.classList.remove('hidden');
-            setStep(1);
-            scrollToElement(fileSection);
-        }
-        
-        function renderFileList() {
-            const container = document.getElementById('fileListContainer');
-            const viewport = document.getElementById('fileListViewport');
-            const ITEM_HEIGHT = 49;
-            const BUFFER_SIZE = 10;
-            
-            let scrollTop = 0;
-            const totalHeight = torrentFiles.length * ITEM_HEIGHT;
-            
-            viewport.innerHTML = '';
-            const spacer = document.createElement('div');
-            spacer.className = 'file-list-spacer';
-            spacer.style.height = totalHeight + 'px';
-            viewport.appendChild(spacer);
-            
-            function renderVisibleItems() {
-                const containerHeight = container.clientHeight;
-                const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_SIZE);
-                const endIndex = Math.min(torrentFiles.length, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER_SIZE);
-                
-                const existingItems = viewport.querySelectorAll('.file-list-item');
-                existingItems.forEach(item => item.remove());
-                
-                for (let index = startIndex; index < endIndex; index++) {
-                    const file = torrentFiles[index];
-                    const item = document.createElement('div');
-                    item.className = 'file-list-item';
-                    item.style.position = 'absolute';
-                    item.style.top = (index * ITEM_HEIGHT) + 'px';
-                    item.style.left = '0';
-                    item.style.right = '0';
-                    item.style.height = ITEM_HEIGHT + 'px';
-                    item.onclick = () => toggleFileSelection(index);
-                    
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.checked = selectedFileIndices.includes(index);
-                    checkbox.dataset.fileIndex = index;
-                    checkbox.onclick = (e) => {
-                        e.stopPropagation();
-                        toggleFileSelection(index);
-                    };
-                    
-                    const info = document.createElement('div');
-                    info.className = 'file-list-item-info';
-                    
-                    const fileName = document.createElement('span');
-                    fileName.className = 'file-list-item-name';
-                    fileName.textContent = file.name;
-                    
-                    const fileSize = document.createElement('span');
-                    fileSize.className = 'file-list-item-size';
-                    fileSize.textContent = formatFileSize(file.size);
-                    
-                    info.appendChild(fileName);
-                    info.appendChild(fileSize);
-                    item.appendChild(checkbox);
-                    item.appendChild(info);
-                    viewport.appendChild(item);
-                }
-            }
-            
-            renderVisibleItems();
-            
-            let scrollTimeout;
-            container.onscroll = function() {
-                scrollTop = container.scrollTop;
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(renderVisibleItems, 10);
-            };
-        }
-        
-        function toggleFileSelection(index) {
-            if (selectedFileIndices.includes(index)) {
-                selectedFileIndices = selectedFileIndices.filter(i => i !== index);
-            } else {
-                selectedFileIndices.push(index);
-            }
-            
-            const container = document.getElementById('fileListContainer');
-            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(checkbox => {
-                const fileIndex = parseInt(checkbox.dataset.fileIndex);
-                if (!isNaN(fileIndex)) {
-                    checkbox.checked = selectedFileIndices.includes(fileIndex);
-                }
-            });
-            
-            updateFileSelectionStats();
-        }
-        
-        function updateFileSelectionStats() {
-            const selectedCount = selectedFileIndices.length;
-            const totalCount = torrentFiles.length;
-            
-            document.getElementById('selectedFileCount').textContent = selectedCount;
-            
-            const selectedSize = torrentFiles.filter((f, idx) => selectedFileIndices.includes(idx)).reduce((sum, f) => sum + f.size, 0);
-            const totalSize = torrentFiles.reduce((sum, f) => sum + f.size, 0);
-            
-            document.getElementById('selectedFileSize').textContent = formatFileSize(selectedSize);
-            document.getElementById('totalFileSize').textContent = formatFileSize(totalSize);
-            
-            const toggleBtn = document.getElementById('toggleAllBtn');
-            allFilesSelected = selectedCount === totalCount;
-            toggleBtn.textContent = allFilesSelected ? 'Deselect All' : 'Select All';
-            
-            document.getElementById('proceedFromFileSelection').disabled = selectedCount === 0;
-        }
-        
-        function toggleAllFiles() {
-            if (allFilesSelected) {
-                selectedFileIndices = [];
-            } else {
-                selectedFileIndices = torrentFiles.map((f, idx) => idx);
-            }
-            
-            allFilesSelected = !allFilesSelected;
-            
-            const container = document.getElementById('fileListContainer');
-            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(checkbox => checkbox.checked = allFilesSelected);
-            
-            updateFileSelectionStats();
-        }
-        
-        function goBackToSource() {
-            document.getElementById('file-selection-section').classList.add('hidden');
-            document.getElementById('magnet-section').classList.remove('hidden');
-            setStep(1);
-        }
-        
-        function proceedDirectlyToFolderSelection(torrentData = null) {
-            selectedFileIndices = [];
-            if (torrentData && torrentData.files) {
-                torrentFiles = torrentData.files;
-            }
-            
-            document.getElementById('magnet-section').classList.add('hidden');
-            const folderSection = document.getElementById('folder-section');
-            folderSection.classList.remove('hidden');
-            setStep(2);
-            scrollToElement(folderSection);
-            loadFoldersFromBasePath();
-        }
-        
-        function displayDownloadingFiles() {
-            const filesList = document.getElementById('downloadingFilesList');
-            const filesContent = document.getElementById('downloadingFilesContent');
-            
-            if (downloadingFiles.length > 0) {
-                filesList.style.display = 'block';
-                filesContent.innerHTML = downloadingFiles.map((file, index) => 
-                    `<div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: transparent; border-radius: var(--radius-md); margin-bottom: 6px; transition: background 0.15s; border: 1px solid var(--border);" onmouseover="this.style.background='var(--primary-light)';" onmouseout="this.style.background='transparent';">
-                        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
-                            <span style="color: var(--primary); font-size: 11px; font-weight: 700; font-family: var(--font-mono);">#${index + 1}</span>
-                            <span style="word-break: break-word; color: var(--text-primary); flex: 1; font-weight: 500; font-size: 13px;">${escapeHtml(file.name)}</span>
-                        </div>
-                        <span style="white-space: nowrap; color: var(--text-muted); font-weight: 600; font-size: 12px; font-family: var(--font-mono);">${formatFileSize(file.size)}</span>
-                    </div>`
-                ).join('');
-            } else {
-                filesList.style.display = 'none';
-            }
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        async function loadPlexLibraries() {
-            try {
-                const response = await fetch('/api/plex/libraries');
-                const data = await response.json();
-                const select = document.getElementById('plexLibrary');
-                select.innerHTML = '<option value="">Select a library...</option>';
-                data.libraries.forEach(lib => {
-                    const option = document.createElement('option');
-                    option.value = lib.title;
-                    option.textContent = lib.title;
-                    select.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Error loading Plex libraries:', error);
-                document.getElementById('plexLibrary').innerHTML = '<option value="">Error loading libraries</option>';
-            }
-        }
-        
-        function setStep(stepNumber) {
-            for (let i = 1; i <= 5; i++) {
-                const step = document.getElementById(`step${i}`);
-                step.classList.remove('active', 'completed');
-                if (i < stepNumber) {
-                    step.classList.add('completed');
-                } else if (i === stepNumber) {
-                    step.classList.add('active');
-                }
-            }
-        }
-        
-        function setButtonLoading(button, text = 'Loading...') {
-            if (!button) return;
-            button.dataset.originalText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg>${text}</span>`;
-        }
-        
-        function restoreButton(button) {
-            if (!button) return;
-            button.disabled = false;
-            button.innerHTML = button.dataset.originalText || 'Continue';
-        }
-        
-        function proceedToFolderSelection(loadingButton = null) {
-            if (!plexHealthy) {
-                showAlert('Cannot proceed: Plex connection required', 'error');
-                return;
-            }
-            
-            const fileSelectionSection = document.getElementById('file-selection-section');
-            if (!fileSelectionSection.classList.contains('hidden')) {
-                if (selectedFileIndices.length === 0) {
-                    showAlert('Please select at least one file', 'error');
-                    return;
-                }
-                fileSelectionSection.classList.add('hidden');
-            } else {
-                if (!selectedTorrentFile) {
-                    if (!magnetLink) {
-                        const magnetInput = document.getElementById('magnetInput');
-                        if (magnetInput) magnetLink = magnetInput.value.trim();
-                    }
-                    
-                    if (!magnetLink || !magnetLink.startsWith('magnet:')) {
-                        showAlert('Please enter a valid magnet link', 'error');
-                        return;
-                    }
-                }
-                
-                if (magnetLink && !selectedTorrentFile && torrentFiles.length === 0) {
-                    if (loadingButton) setButtonLoading(loadingButton, 'Fetching info...');
-                    checkTorrentFiles(loadingButton);
-                    return;
-                }
-                
-                document.getElementById('magnet-section').classList.add('hidden');
-            }
-            
-            document.getElementById('folder-section').classList.remove('hidden');
-            setStep(2);
-            scrollToElement(document.getElementById('folder-section'));
-            setTimeout(() => loadFoldersFromBasePath(), 0);
-        }
-        
-        async function loadFoldersFromBasePath() {
-            try {
-                const response = await fetch('/api/config/base-path');
-                const data = await response.json();
-                loadFolders(data.base_path || '/');
-            } catch (error) {
-                console.error('Error getting base path:', error);
-                loadFolders('/');
-            }
-        }
-        
-        async function loadFolders(path) {
-            try {
-                const folderBrowser = document.getElementById('folderBrowser');
-                folderBrowser.style.opacity = '0.6';
-                
-                const url = path ? `/api/folders?path=${encodeURIComponent(path)}` : '/api/folders';
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                currentPath = data.current_path;
-                document.getElementById('currentPath').textContent = currentPath;
-                
-                const folderStats = document.getElementById('folderStats');
-                folderStats.innerHTML = `
-                    <div class="stat-item"><span>📁</span><span>${data.folder_count || 0} folder${data.folder_count !== 1 ? 's' : ''}</span></div>
-                    <div class="stat-item"><span>📄</span><span>${data.file_count || 0} file${data.file_count !== 1 ? 's' : ''}</span></div>
-                `;
-                
-                const folderList = document.getElementById('folderList');
-                folderList.innerHTML = '';
-                const filterInput = document.getElementById('folderFilter');
-                if (filterInput) filterInput.value = '';
-                
-                if (data.parent_path) {
-                    const parentItem = document.createElement('div');
-                    parentItem.className = 'folder-item';
-                    parentItem.innerHTML = '<span class="folder-icon">↑</span><span>.. (Parent folder)</span>';
-                    parentItem.onclick = () => loadFolders(data.parent_path);
-                    parentItem.setAttribute('tabindex', '0');
-                    parentItem.setAttribute('role', 'button');
-                    parentItem.onkeypress = (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            loadFolders(data.parent_path);
-                        }
-                    };
-                    folderList.appendChild(parentItem);
-                }
-                
-                const folders = data.folders || [];
-                folders.forEach(folder => {
-                    const item = document.createElement('div');
-                    item.className = 'folder-item';
-                    item.dataset.name = folder.name.toLowerCase();
-                    item.innerHTML = `<span class="folder-icon">📁</span><span>${escapeHtml(folder.name)}</span>`;  
-                    item.onclick = () => loadFolders(folder.path);
-                    item.setAttribute('tabindex', '0');
-                    item.setAttribute('role', 'button');
-                    item.onkeypress = (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            loadFolders(folder.path);
-                        }
-                    };
-                    folderList.appendChild(item);
-                });
-                
-                if (data.files && data.files.length > 0) {
-                    data.files.forEach(file => {
-                        const item = document.createElement('div');
-                        item.className = 'file-item';
-                        const fileSize = formatFileSize(file.size);
-                        item.innerHTML = `
-                            <div class="file-info">
-                                <span class="file-icon">📄</span>
-                                <span>${escapeHtml(file.name)}</span>
-                            </div>
-                            <span class="file-size">${fileSize}</span>
-                        `;
-                        folderList.appendChild(item);
-                    });
-                }
-                
-                if (folders.length === 0 && (!data.files || data.files.length === 0) && !data.parent_path) {
-                    folderList.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-title">Empty Directory</div>
-                            <div class="empty-state-description">This folder contains no files or subfolders</div>
-                        </div>
-                    `;
-                }
-                
-                folderBrowser.style.opacity = '1';
-            } catch (error) {
-                showAlert('Error loading folders: ' + error.message, 'error');
-            }
-        }
-        
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-        
-        function filterFolders() {
-            const filter = document.getElementById('folderFilter').value.toLowerCase();
-            document.getElementById('folderList').querySelectorAll('.folder-item[data-name]').forEach(item => {
-                item.style.display = item.dataset.name.includes(filter) ? '' : 'none';
-            });
-        }
 
-        function selectCurrentFolder() {
-            showConfirmation(currentPath);
-        }
-
-        function showConfirmation(path) {
-            confirmedPath = path;
-
-            document.getElementById('confirmDestination').textContent = path;
-
-            let torrentDisplayName = '';
-            if (selectedTorrentFile) {
-                torrentDisplayName = selectedTorrentFile.name;
-            } else if (selectedSearchResult) {
-                torrentDisplayName = selectedSearchResult.name;
-            } else if (magnetLink) {
-                const dn = magnetLink.match(/[?&]dn=([^&]+)/);
-                torrentDisplayName = dn ? decodeURIComponent(dn[1].replace(/\+/g, ' ')) : magnetLink.substring(0, 80) + '…';
-            }
-            document.getElementById('confirmTorrentName').textContent = torrentDisplayName;
-
-            if (torrentFiles.length > 0) {
-                const indices = selectedFileIndices.length > 0 ? selectedFileIndices : torrentFiles.map((_, i) => i);
-                const count = indices.length;
-                const size = torrentFiles.filter((_, idx) => indices.includes(idx)).reduce((s, f) => s + f.size, 0);
-                document.getElementById('confirmFilesInfo').textContent = `${count} file${count !== 1 ? 's' : ''} · ${formatFileSize(size)}`;
-            } else {
-                document.getElementById('confirmFilesInfo').textContent = '';
-            }
-
-            const flattenAll = document.getElementById('flattenAllCheckbox').checked;
-            const confirmOptions = document.getElementById('confirmOptions');
-            if (flattenAll) {
-                confirmOptions.style.display = 'block';
-                document.getElementById('confirmOptionsContent').textContent = '📂 Flatten directory structure enabled';
-            } else {
-                confirmOptions.style.display = 'none';
-            }
-
-            document.getElementById('folder-section').classList.add('hidden');
-            const confirmSection = document.getElementById('confirm-section');
-            confirmSection.classList.remove('hidden');
-            setStep(3);
-            scrollToElement(confirmSection);
-        }
-
-        function goBackFromConfirm() {
-            document.getElementById('confirm-section').classList.add('hidden');
-            document.getElementById('folder-section').classList.remove('hidden');
-            setStep(2);
-            scrollToElement(document.getElementById('folder-section'));
-        }
-
-        function confirmAndDownload() {
-            startDownload(confirmedPath);
-        }
-
-        function goBack() {
-            const fileSelectionSection = document.getElementById('file-selection-section');
-            if (!fileSelectionSection.classList.contains('hidden')) {
-                document.getElementById('folder-section').classList.add('hidden');
-                fileSelectionSection.classList.remove('hidden');
-                setStep(1);
-            } else {
-                torrentFiles = [];
-                selectedFileIndices = [];
-                document.getElementById('folder-section').classList.add('hidden');
-                document.getElementById('magnet-section').classList.remove('hidden');
-                setStep(1);
-            }
-        }
-        
-        async function startDownload(path) {
-            const downloadButton = event.target;
-            downloadButton.disabled = true;
-            downloadButton.textContent = 'Starting...';
-            
-            if (torrentFiles.length > 0) {
-                if (selectedFileIndices.length > 0) {
-                    downloadingFiles = selectedFileIndices.map(idx => torrentFiles[idx]);
-                } else {
-                    downloadingFiles = torrentFiles;
-                }
-            } else {
-                downloadingFiles = [];
-            }
-            
-            try {
-                let response;
-                const flattenAll = document.getElementById('flattenAllCheckbox').checked;
-                
-                if (selectedTorrentFile) {
-                    const formData = new FormData();
-                    formData.append('file', selectedTorrentFile);
-                    formData.append('download_path', path);
-                    formData.append('skip_parent_folder', 'true');
-                    formData.append('flatten_all', flattenAll ? 'true' : 'false');
-                    if (selectedFileIndices.length > 0) {
-                        formData.append('selected_files', JSON.stringify(selectedFileIndices));
-                    }
-                    response = await fetch('/api/download/file', { method: 'POST', body: formData });
-                } else {
-                    const requestBody = {
-                        magnet_link: magnetLink,
-                        download_path: path,
-                        skip_parent_folder: true,
-                        flatten_all: flattenAll
-                    };
-                    if (selectedFileIndices.length > 0) {
-                        requestBody.selected_files = selectedFileIndices;
-                    }
-                    response = await fetch('/api/download', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody)
-                    });
-                }
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                    throw new Error(errorData.detail || 'Failed to start download');
-                }
-                
-                const data = await response.json();
-                downloadId = data.download_id;
-                updateURLWithDownloadId(downloadId);
-                
-                document.getElementById('folder-section').classList.add('hidden');
-                document.getElementById('confirm-section').classList.add('hidden');
-                document.getElementById('progressContainer').style.display = 'block';
-                setStep(4);
-                scrollToElement(document.getElementById('progressContainer'));
-                
-                displayDownloadingFiles();
-                progressInterval = setInterval(updateProgress, 1000);
-            } catch (error) {
-                showAlert('Error starting download: ' + error.message, 'error');
-                downloadButton.disabled = false;
-                downloadButton.textContent = '✓ Start Download';
-            }
-        }
-        
-        async function updateProgress() {
-            if (!downloadId) return;
-            
-            try {
-                const response = await fetch(`/api/progress/${downloadId}`);
-                
-                if (!response.ok) {
-                    if (response.status === 404 || response.status === 410) {
-                        clearInterval(progressInterval);
-                        return;
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.status === 'error') {
-                    clearInterval(progressInterval);
-                    document.getElementById('cancelBtn').disabled = true;
-                    document.getElementById('progressBar').classList.add('error-state');
-                    document.getElementById('progressPercent').textContent = 'Error';
-                    document.getElementById('progressPercent').classList.add('error-state');
-                    showAlert('Download failed: ' + (data.error || 'Unknown error'), 'error');
-                    setTimeout(() => startOver(), 5000);
-                    return;
-                }
-                
-                const progress = data.progress !== undefined && data.progress !== null ? data.progress : 0;
-                const progressPercent = progress.toFixed(1);
-                
-                document.getElementById('downloadName').textContent = data.name || 'Unknown';
-                document.getElementById('progressBar').style.width = progressPercent + '%';
-                document.getElementById('progressPercent').textContent = progressPercent + '%';
-                document.getElementById('progressBar').parentElement.setAttribute('aria-valuenow', progressPercent);
-                document.getElementById('downloadSpeed').textContent = (data.download_rate || 0).toFixed(1) + ' KB/s';
-                document.getElementById('uploadSpeed').textContent = (data.upload_rate || 0).toFixed(1) + ' KB/s';
-                document.getElementById('peers').textContent = (data.num_seeds || 0) + ' / ' + (data.num_peers || 0);
-                
-                const downloadedMB = (data.total_download || 0).toFixed(1);
-                const totalSizeMB = data.total_size || 0;
-                
-                if (totalSizeMB > 0) {
-                    document.getElementById('downloaded').textContent = `${downloadedMB} / ${totalSizeMB.toFixed(1)} MB`;
-                } else {
-                    document.getElementById('downloaded').textContent = downloadedMB + ' MB';
-                }
-                
-                document.getElementById('timeElapsed').textContent = formatTime(data.elapsed_seconds || 0);
-                
-                if (data.eta_seconds && data.eta_seconds > 0 && progress < 99.9) {
-                    document.getElementById('eta').textContent = formatTime(data.eta_seconds);
-                } else if (progress >= 99.9) {
-                    document.getElementById('eta').textContent = 'Complete';
-                } else {
-                    document.getElementById('eta').textContent = 'Calculating...';
-                }
-                
-                if (data.status === 'completed' || progress >= 99.9) {
-                    clearInterval(progressInterval);
-                    document.getElementById('cancelBtn').style.display = 'none';
-                    document.getElementById('proceedPlexBtn').style.display = 'block';
-                    document.getElementById('newDownloadBtnProgress').style.display = 'block';
-                    
-                    const progressBar = document.getElementById('progressBar');
-                    progressBar.classList.add('completed');
-                    const progressPct = document.getElementById('progressPercent');
-                    progressPct.textContent = '100%';
-                    progressPct.classList.add('completed');
-                    
-                    document.getElementById('progressContainer').classList.add('download-complete');
-                    document.getElementById('eta').textContent = 'Complete';
-                }
-            } catch (error) {
-                console.error('Error updating progress:', error);
-            }
-        }
-        
-        async function cancelDownload() {
-            if (!downloadId) return;
-            if (!confirm('Cancel this download?')) return;
-            
-            const cancelButton = document.getElementById('cancelBtn');
-            cancelButton.disabled = true;
-            cancelButton.textContent = 'Cancelling...';
-            
-            try {
-                await fetch('/api/cancel', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ download_id: downloadId })
-                });
-                
-                clearInterval(progressInterval);
-                showAlert('Download cancelled', 'success');
-                setTimeout(() => startOver(), 2000);
-            } catch (error) {
-                showAlert('Error cancelling: ' + error.message, 'error');
-                cancelButton.disabled = false;
-                cancelButton.textContent = '✕ Cancel Download';
-            }
-        }
-        
-        function showPlexSection() {
-            setStep(5);
-            document.getElementById('progressContainer').style.display = 'none';
-            const plexSection = document.getElementById('plex-section');
-            plexSection.style.display = 'block';
-            scrollToElement(plexSection);
-            updateURLStep('plex');
-        }
-        
-        function proceedToPlex() {
-            showPlexSection();
-        }
-        
-        function onLibrarySelected() {
-            const library = document.getElementById('plexLibrary').value;
-            document.getElementById('refreshLibraryBtn').disabled = !library;
-        }
-        
-        async function refreshPlex() {
-            if (!plexHealthy) {
-                showAlert('Plex not available', 'error');
-                return;
-            }
-            
-            const library = document.getElementById('plexLibrary').value;
-            if (!library) {
-                showAlert('Please select a library', 'error');
-                return;
-            }
-            
-            const refreshButton = document.getElementById('refreshLibraryBtn');
-            refreshButton.disabled = true;
-            refreshButton.innerHTML = '<span style="display: inline-block; animation: spin 0.8s linear infinite;">↻</span> Refreshing...';
-            
-            try {
-                const response = await fetch('/api/plex/refresh', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ library_name: library })
-                });
-                
-                if (!response.ok) throw new Error('Failed to refresh library');
-                
-                showAlert(`Scanning "${library}" for new content. Files will appear in Plex shortly!`, 'success', false);
-                document.getElementById('step5').classList.add('completed');
-                
-                document.querySelector('.plex-section .section-title').style.display = 'none';
-                document.getElementById('plexLibrary').style.display = 'none';
-                refreshButton.style.display = 'none';
-                
-                setTimeout(() => clearDownloadIdFromURL(), 2000);
-            } catch (error) {
-                showAlert('Error refreshing library: ' + error.message, 'error');
-                refreshButton.disabled = false;
-                refreshButton.innerHTML = '↻ Refresh Plex Library';
-            }
-        }
-        
-        function showAlert(message, type, autoDismiss = true) {
-            // Use toast notifications for better visibility
-            showToast(message, type, autoDismiss);
-            
-            // Also update inline alert container if visible (for plex section)
-            const alertContainer = document.getElementById('alertContainer');
-            alertContainer.innerHTML = `<div class="alert alert-${type}">${escapeHtml(message)}</div>`;
-            if (autoDismiss) {
-                setTimeout(() => alertContainer.innerHTML = '', 5000);
-            }
-        }
-        
-        function showToast(message, type, autoDismiss = true) {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            
-            const icon = type === 'success' ? '✓' : '✕';
-            toast.innerHTML = `
-                <span class="toast-icon">${icon}</span>
-                <span class="toast-message">${escapeHtml(message)}</span>
-                <button class="toast-close" onclick="dismissToast(this.parentElement)">×</button>
-            `;
-            
-            container.appendChild(toast);
-            
-            // Click to dismiss
-            toast.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('toast-close')) dismissToast(toast);
-            });
-            
-            if (autoDismiss) {
-                setTimeout(() => dismissToast(toast), 5000);
-            }
-        }
-        
-        function dismissToast(toast) {
-            if (!toast || toast.classList.contains('toast-exit')) return;
-            toast.classList.add('toast-exit');
-            setTimeout(() => toast.remove(), 300);
-        }
-        
-        function scrollToElement(element) {
-            if (!element) return;
-            setTimeout(() => {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-        }
-        
-        function startOver() {
-            torrentFiles = [];
-            selectedFileIndices = [];
-            downloadingFiles = [];
-            window.location.href = '/';
-        }
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>

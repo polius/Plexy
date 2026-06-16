@@ -19,7 +19,7 @@
 - Browse and select download folder dynamically
 - Real-time download progress tracking
 - Cancel downloads with automatic cleanup
-- Automatically refresh Plex library when complete
+- Automatically refresh Plex library when complete (optional — Plexy works standalone if Plex isn't configured)
 
 ## Installation
 
@@ -64,7 +64,7 @@ Once deployed, access it through your browser:
 
 ## Environment Variables
 
-Plexy supports the following environment variables:
+Plexy supports the following environment variables. Both are optional — if they're omitted, Plexy still downloads torrents and simply skips the Plex refresh step.
 
 | Variable | Sample Value | Details |
 | --- | --- | --- |
