@@ -601,9 +601,12 @@ function renderDownloads(items) {
     items.forEach((item) => {
         seen.add(item.id);
         let row = rowEls.get(item.id);
-        if (!row) { row = buildRow(item.id); rowEls.set(item.id, row); }
+        if (!row) {
+            row = buildRow(item.id);
+            rowEls.set(item.id, row);
+            list.appendChild(row);
+        }
         updateRow(row, item);
-        list.appendChild(row);  // keep server order (sorted by start_time)
     });
     // drop rows no longer present
     rowEls.forEach((row, id) => {
